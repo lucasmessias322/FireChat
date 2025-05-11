@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { Timestamp } from "firebase/firestore";
 import { IoCheckmarkDoneOutline, IoCheckmarkOutline } from "react-icons/io5";
+import { FaTrashAlt } from "react-icons/fa";
 import { useState } from "react";
 
 // Props do MessageItem
@@ -10,6 +11,7 @@ interface MessageItemProps {
   color?: string;
   seen?: boolean;
   avatar?: string;
+  onDelete?: () => void;
 }
 
 // Função para formatar tempo relativo (pt-BR)
@@ -37,9 +39,12 @@ export default function MessageItem({
   color,
   seen,
   avatar,
+  onDelete,
 }: MessageItemProps) {
   const MAX_PREVIEW = 200;
   const [expanded, setExpanded] = useState(false);
+  const [dragged, setDragged] = useState(false);
+  const [startX, setStartX] = useState<number | null>(null);
 
   // Extrai timestamp
   let date: Date;
@@ -65,60 +70,120 @@ export default function MessageItem({
       ? fullText.slice(0, MAX_PREVIEW) + "..."
       : fullText;
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (startX === null) return;
+    const currentX = e.touches[0].clientX;
+    if (startX - currentX > 50) {
+      setDragged(true);
+    } else if (currentX - startX > 50) {
+      setDragged(false);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setStartX(null);
+  };
+
   return (
-    <MessageContainer isSender={isSender}>
-      <MessageBubble isSender={isSender}>
-        <MessageUsername isSender={isSender} color={color}>
-          {isSender
-            ? "Você"
-            : `~ ${message.user.charAt(0).toUpperCase()}${message.user.slice(
-                1
-              )}`}
-        </MessageUsername>
+    <MessageContainer
+      isSender={isSender}
+      dragged={dragged}
+      onTouchStart={isSender && handleTouchStart}
+      onTouchMove={isSender && handleTouchMove}
+      onTouchEnd={isSender && handleTouchEnd}
+    >
+      <div className="first-child">
+        {!isSender && <img src={avatar} alt="" />}
+        <MessageBubble isSender={isSender}>
+          <MessageUsername isSender={isSender} color={color}>
+            {isSender
+              ? "Você"
+              : `~ ${message.user.charAt(0).toUpperCase()}${message.user.slice(
+                  1
+                )}`}
+          </MessageUsername>
 
-        <MessageText>{previewText}</MessageText>
-        {fullText.length > MAX_PREVIEW && (
-          <ToggleButton onClick={() => setExpanded(!expanded)}>
-            {expanded ? "Ver menos" : "Ver mais"}
-          </ToggleButton>
-        )}
+          <MessageText>{previewText}</MessageText>
+          {fullText.length > MAX_PREVIEW && (
+            <ToggleButton onClick={() => setExpanded(!expanded)}>
+              {expanded ? "Ver menos" : "Ver mais"}
+            </ToggleButton>
+          )}
 
-        <MessageDataContainer>
-          <MessageTime>{formattedTime}</MessageTime>
-          {isSender &&
-            (seen ? (
-              <IoCheckmarkDoneOutline size={16} color="#4fc3f7" />
-            ) : (
-              <IoCheckmarkOutline size={16} color="#e9d4c4" />
-            ))}
-        </MessageDataContainer>
-      </MessageBubble>
-      <MessageOptionsIcons />
+          <MessageDataContainer>
+            <MessageTime>{formattedTime}</MessageTime>
+            {isSender &&
+              (seen ? (
+                <IoCheckmarkDoneOutline size={16} color="#4fc3f7" />
+              ) : (
+                <IoCheckmarkOutline size={16} color="#e9d4c4" />
+              ))}
+          </MessageDataContainer>
+        </MessageBubble>
+        <MessageOptionsIcons />
+      </div>
+
+      {isSender && dragged && (
+        <DeleteIcon onClick={onDelete}>
+          <FaTrashAlt color="#ff4d4d" size={25} />
+        </DeleteIcon>
+      )}
     </MessageContainer>
   );
 }
 
-const MessageContainer = styled.div<{ isSender: boolean }>`
+const MessageContainer = styled.div<{ isSender: boolean; dragged?: boolean }>`
   display: flex;
   width: 100%;
   padding: 20px 10px;
-  ${({ isSender }) => isSender && `justify-content: flex-end;`}
+  align-items: center;
+  justify-content: ${({ isSender }) => (isSender ? "flex-end" : "flex-start")};
+  position: relative;
+  transform: ${({ dragged }) =>
+    dragged ? "translateX(-20px)" : "translateX(0)"};
+  transition: transform 0.2s ease;
+
+  div.first-child {
+    display: flex;
+    align-items: baseline;
+  }
+
+  img {
+    width: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right:  10px;
+  }
+`;
+
+const DeleteIcon = styled.div`
+  border-radius: 50%;
+  padding: 10px;
+  cursor: pointer;
+  color: white;
+  font-size: 16px;
+  transition: background 0.3s;
 `;
 
 const MessageBubble = styled.div<{ isSender: boolean }>`
   display: flex;
   flex-direction: column;
   background-color: #212433;
-  padding: 10px 20px;
+  padding: 10px 15px;
   border-radius: 20px;
   border-top-left-radius: 0;
-  max-width: 90%;
+  max-width: 500px;
+  min-width: 150px;
   ${({ isSender }) =>
-    isSender && `border-top-left-radius: 10px; border-top-right-radius: 0; `}
+    isSender && `border-top-left-radius: 20px; border-top-right-radius: 0; `}
 `;
 
 const MessageUsername = styled.div<{ isSender: boolean; color?: string }>`
-  padding-bottom: 5px;
+  padding-bottom: 10px;
   font-size: 14px;
   color: ${({ color }) => color || "#e9d4c4"};
   font-weight: bold;
@@ -151,7 +216,7 @@ const MessageTime = styled.div`
 `;
 
 const MessageOptionsIcons = styled.div`
-  padding: 10px;
+  //padding: 10px;
 `;
 
 const MessageDataContainer = styled.div`
