@@ -1,296 +1,3 @@
-// import * as C from "./AppStyle";
-// import MessageItem from "./Components/MessageItem";
-// import SystemMessage from "./Components/SystemMessage";
-// import { IoEllipsisVertical, IoExitOutline, IoSend } from "react-icons/io5";
-// import { FcGoogle } from "react-icons/fc";
-// import { useState, useEffect, FormEvent, useRef } from "react";
-// import { db, timestamp, auth } from "./firebase";
-// import {
-//   collection,
-//   query,
-//   orderBy,
-//   onSnapshot,
-//   addDoc,
-//   deleteDoc,
-//   doc as docRef,
-//   writeBatch,
-//   doc,
-//   arrayUnion,
-//   setDoc,
-//   DocumentData,
-// } from "firebase/firestore";
-// import {
-//   createUserWithEmailAndPassword,
-//   signInWithEmailAndPassword,
-//   signInWithPopup,
-//   GoogleAuthProvider,
-//   signOut as fbSignOut,
-//   onAuthStateChanged,
-//   User as FirebaseUser,
-// } from "firebase/auth";
-
-// interface Message {
-//   id: string;
-//   text: string;
-//   user?: string;
-//   timestamp: { seconds: number; nanoseconds: number };
-//   system?: boolean;
-//   readBy?: string[];
-// }
-// interface User {
-//   uid: string;
-//   username: string;
-//   avatar: string;
-// }
-
-// function App() {
-//   // estados de autenticação
-//   const [entered, setEntered] = useState(false);
-//   const [loginMode, setLoginMode] = useState<"login" | "signup">("login");
-//   const [inputName, setInputName] = useState("");
-//   const [inputPass, setInputPass] = useState("");
-
-//   // perfil atual
-//   const [username, setUsername] = useState("");
-//   const [avatar, setAvatar] = useState("");
-
-//   // chat
-//   const [messages, setMessages] = useState<Message[]>([]);
-//   const [text, setText] = useState("");
-//   const [usersData, setUsersData] = useState<User[]>([]);
-//   const [showMenu, setShowMenu] = useState(false);
-//   const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-//   // paleta + cores
-//   const colorPalette = [
-//     "#e57373",
-//     "#ba68c8",
-//     "#7986cb",
-//     "#4fc3f7",
-//     "#4db6ac",
-//     "#81c784",
-//     "#dce775",
-//     "#ffd54f",
-//     "#ffb74d",
-//     "#a1887f",
-//   ];
-//   function getRandomColor() {
-//     return colorPalette[Math.floor(Math.random() * colorPalette.length)];
-//   }
-//   function getUserColor(u: string) {
-//     const key = `color_${u}`;
-//     let c = localStorage.getItem(key);
-//     if (!c) {
-//       c = getRandomColor();
-//       localStorage.setItem(key, c);
-//     }
-//     return c;
-//   }
-
-//   // ——————— AUTH STATE LISTENER ———————
-//   useEffect(() => {
-//     const unsubscribe = onAuthStateChanged(auth, (u: FirebaseUser | null) => {
-//       if (u) {
-//         setEntered(true);
-//         // para usuários Google e synthetic-email
-//         const name = u.email!.split("@")[0];
-//         setUsername(name);
-//         const url = `https://api.dicebear.com/6.x/pixel-art/svg?seed=${u.uid}`;
-//         setAvatar(url);
-//         // cria/atualiza perfil no Firestore
-//         setDoc(
-//           docRef(db, "users", u.uid),
-//           { username: name, avatar: url },
-//           { merge: true }
-//         );
-//         // mensagem de sistema de entrada
-//         addDoc(collection(db, "messages"), {
-//           text: `${name} entrou no chat`,
-//           timestamp: timestamp(),
-//           system: true,
-//           readBy: [name],
-//         });
-//       } else {
-//         setEntered(false);
-//         setUsername("");
-//         setAvatar("");
-//       }
-//     });
-//     return () => unsubscribe();
-//   }, []);
-
-//   // ——————— MENSAGENS LISTENER ———————
-//   useEffect(() => {
-//     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
-//     const unsub = onSnapshot(q, (snap) => {
-//       const msgs = snap.docs.map((d) => ({
-//         id: d.id,
-//         ...(d.data() as Message),
-//       }));
-//       setMessages(msgs);
-//     });
-//     return () => unsub();
-//   }, []);
-
-//   // ——————— USERS LISTENER ———————
-//   useEffect(() => {
-//     const q = collection(db, "users");
-//     const unsub = onSnapshot(q, (snap) => {
-//       const us = snap.docs.map((d) => ({
-//         uid: d.id,
-//         username: (d.data() as any).username,
-//         avatar: (d.data() as any).avatar,
-//       }));
-//       setUsersData(us);
-//     });
-//     return () => unsub();
-//   }, []);
-
-//   // ——————— MARCAR COMO LIDO ———————
-//   useEffect(() => {
-//     if (!username) return;
-//     const batch = writeBatch(db);
-//     messages.forEach((m) => {
-//       if (!m.system && !m.readBy?.includes(username)) {
-//         batch.update(doc(db, "messages", m.id), {
-//           readBy: arrayUnion(username),
-//         });
-//       }
-//     });
-//     batch.commit();
-//   }, [messages, username]);
-
-//   // ——————— AUTO-SCROLL ———————
-//   useEffect(() => {
-//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-//   }, [messages]);
-
-//   // ——————— HELPERS ———————
-//   const getAvatarByUid = (uid: string) =>
-//     usersData.find((u) => u.uid === uid)?.avatar || "";
-
-//   // ——————— LOGIN / SIGNUP ———————
-//   const handleAuth = async () => {
-//     const name = inputName.trim().toLowerCase();
-//     if (!name || !inputPass) return;
-//     const fakeEmail = `${name}@chat.app`;
-//     try {
-//       if (loginMode === "login") {
-//         await signInWithEmailAndPassword(auth, fakeEmail, inputPass);
-//       } else {
-//         await createUserWithEmailAndPassword(auth, fakeEmail, inputPass);
-//       }
-//       setInputPass("");
-//     } catch (err: any) {
-//       alert(err.message);
-//     }
-//   };
-
-//   // ——————— LOGIN COM GOOGLE ———————
-//   const handleGoogleLogin = async () => {
-//     const provider = new GoogleAuthProvider();
-//     try {
-//       await signInWithPopup(auth, provider);
-//     } catch (err: any) {
-//       alert(err.message);
-//     }
-//   };
-
-//   // ——————— LOGOUT ———————
-//   const handleLogout = async () => {
-//     // envia mensagem de saída
-//     await addDoc(collection(db, "messages"), {
-//       text: `${username} saiu do chat`,
-//       timestamp: timestamp(),
-//       system: true,
-//       readBy: [username],
-//     });
-//     await fbSignOut(auth);
-//     setShowMenu(false);
-//   };
-
-//   // ——————— ENVIO / DELETE ———————
-//   const sendMessage = async (e: FormEvent) => {
-//     e.preventDefault();
-//     const t = text.trim();
-//     if (!t) return;
-//     await addDoc(collection(db, "messages"), {
-//       text: t,
-//       user: username,
-//       timestamp: timestamp(),
-//       system: false,
-//       readBy: [username],
-//     });
-//     setText("");
-//   };
-//   const handleDelete = async (id: string, owner?: string) => {
-//     if (owner !== username) return;
-//     if (window.confirm("Confirma exclusão?")) {
-//       await deleteDoc(docRef(db, "messages", id));
-//     }
-//   };
-
-//   // ——————— RENDER ———————
-//   if (!entered) {
-//     return (
-//       <SigningAndLogin
-//         loginMode={loginMode}
-//         setLoginMode={setLoginMode}
-//         handleGoogleLogin={handleGoogleLogin}
-//         handleAuth={handleAuth}
-//         inputName={inputName}
-//         setInputName={setInputName}
-//         inputPass={inputPass}
-//         setInputPass={setInputPass}
-//       />
-//     );
-//   }
-
-//   return (
-//     <C.Container>
-//       <Header
-//         setShowMenu={setShowMenu}
-//         showMenu={showMenu}
-//         username={username}
-//         avatar={avatar}
-//         handleLogout={handleLogout}
-//       />
-
-//       <C.ChatContainer>
-//         <C.MessagesContainer>
-//           {messages
-//             .slice()
-//             .reverse()
-//             .map((m) =>
-//               m.system ? (
-//                 <SystemMessage key={m.id} message={m} />
-//               ) : (
-//                 <MessageItem
-//                   key={m.id}
-//                   message={m}
-//                   isSender={m.user === username}
-//                   color={getUserColor(m.user!)}
-//                   seen={m.readBy!.length > 1}
-//                   onDelete={() => handleDelete(m.id, m.user)}
-//                   avatar={getAvatarByUid(m.user!)}
-//                 />
-//               )
-//             )}
-//           <div ref={messagesEndRef} />
-//         </C.MessagesContainer>
-//       </C.ChatContainer>
-
-//       <SendMessageForm
-//         text={text}
-//         setText={setText}
-//         sendMessage={sendMessage}
-//       />
-//     </C.Container>
-//   );
-// }
-
-// export default App;
-
 import * as C from "./AppStyle";
 import MessageItem from "./Components/MessageItem";
 import SystemMessage from "./Components/SystemMessage";
@@ -375,43 +82,47 @@ export default function App() {
     return c;
   };
 
-  // useEffect(() => {
-  //   const unsubscribe = onAuthStateChanged(auth, (u: FirebaseUser | null) => {
-  //     if (u) {
-  //       setEntered(true);
-  //       const name = u.email!.split("@")[0];
-  //       setUsername(name);
-  //       const url = `https://api.dicebear.com/6.x/pixel-art/svg?seed=${u.uid}`;
-  //       setAvatar(url);
-  //       setDoc(
-  //         docRef(db, "users", u.uid),
-  //         { username: name, avatar: url },
-  //         { merge: true }
-  //       );
-  //       addDoc(collection(db, "messages"), {
-  //         text: `${name} entrou no chat`,
-  //         timestamp: timestamp(),
-  //         system: true,
-  //         readBy: [name],
-  //       });
-  //     } else {
-  //       setEntered(false);
-  //       setUsername("");
-  //       setAvatar("");
-  //     }
-  //   });
-  //   return () => unsubscribe();
-  // }, []);
+  // ✨ Auth state listener: marca entered e define username/avatar
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (u: FirebaseUser | null) => {
+      if (u) {
+        setEntered(true);
+        const name = u.email!.split("@")[0];
+        setUsername(name);
+        const avatarUrl =
+          u.photoURL && u.photoURL !== ""
+            ? u.photoURL
+            : `https://api.dicebear.com/6.x/pixel-art/svg?seed=${u.uid}`;
+        setAvatar(avatarUrl);
+        setDoc(
+          docRef(db, "users", u.uid),
+          { username: name, avatar: avatarUrl },
+          { merge: true }
+        );
+        addDoc(collection(db, "messages"), {
+          text: `${name} entrou no chat`,
+          timestamp: timestamp(),
+          system: true,
+          readBy: [name],
+        });
+      } else {
+        setEntered(false);
+        setUsername("");
+        setAvatar("");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
+  // Carrega mensagens
   useEffect(() => {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     return onSnapshot(q, (snap) =>
-      setMessages(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Message) }))
-      )
+      setMessages(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Message) })))
     );
   }, []);
 
+  // Carrega usuários
   useEffect(() => {
     const q = collection(db, "users");
     return onSnapshot(q, (snap) =>
@@ -425,6 +136,7 @@ export default function App() {
     );
   }, []);
 
+  // Carrega typing
   useEffect(() => {
     const q = collection(db, "typing");
     return onSnapshot(q, (snap) => {
@@ -437,6 +149,7 @@ export default function App() {
     });
   }, [usersData]);
 
+  // Marca como lido
   useEffect(() => {
     if (!username) return;
     const batch = writeBatch(db);
@@ -450,12 +163,14 @@ export default function App() {
     batch.commit();
   }, [messages, username]);
 
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const fakeEmail = (name: string) => `${name}@chat.app`;
 
+  // Login / signup
   const handleAuth = async () => {
     const name = inputName.trim().toLowerCase();
     if (!name || !inputPass) return;
@@ -463,13 +178,15 @@ export default function App() {
     try {
       if (loginMode === "login")
         await signInWithEmailAndPassword(auth, email, inputPass);
-      else await createUserWithEmailAndPassword(auth, email, inputPass);
+      else
+        await createUserWithEmailAndPassword(auth, email, inputPass);
       setInputPass("");
     } catch (err: any) {
       alert(err.message);
     }
   };
 
+  // Login Google
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
@@ -478,6 +195,7 @@ export default function App() {
     }
   };
 
+  // Logout
   const handleLogout = async () => {
     await addDoc(collection(db, "messages"), {
       text: `${username} saiu do chat`,
@@ -489,6 +207,7 @@ export default function App() {
     setShowMenu(false);
   };
 
+  // Typing indicator
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setText(e.target.value);
     const uid = auth.currentUser!.uid;
@@ -503,17 +222,16 @@ export default function App() {
       1000
     );
   };
+
+  // Envia mensagem
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault();
     const t = text.trim();
     if (!t) return;
-
     const now = Timestamp.now();
-
     const expiresAt = Timestamp.fromMillis(
-      now.toMillis() + 5 * 60 * 60 * 1000 // 5 horas em ms
+      now.toMillis() + 5 * 60 * 60 * 1000 // 5 horas
     );
-    
     await addDoc(collection(db, "messages"), {
       text: t,
       user: username,
@@ -526,6 +244,7 @@ export default function App() {
     const uid = auth.currentUser!.uid;
     setDoc(doc(db, "typing", uid), { typing: false, lastUpdated: timestamp() });
   };
+
   const handleDelete = async (id: string, owner?: string) => {
     if (owner !== username) return;
     if (window.confirm("Confirma exclusão?"))
@@ -579,8 +298,7 @@ export default function App() {
 
         {typingUsers.length > 0 && (
           <C.TypingIndicator>
-            {typingUsers.join(", ")}{" "}
-            {typingUsers.length === 1 ? "está" : "estão"} digitando...
+            {typingUsers.join(", ")} {typingUsers.length === 1 ? "está" : "estão"} digitando...
           </C.TypingIndicator>
         )}
 
@@ -595,6 +313,7 @@ export default function App() {
     </C.Container>
   );
 }
+
 
 function Header({
   setShowMenu,
