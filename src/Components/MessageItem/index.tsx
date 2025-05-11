@@ -1,11 +1,13 @@
 import styled from "styled-components";
 import { Timestamp } from "firebase/firestore";
+import { IoCheckmarkDoneOutline, IoCheckmarkOutline } from "react-icons/io5";
 
 // Props do MessageItem
 interface MessageItemProps {
   message: any;
   isSender: boolean;
   color?: string;
+  seen?: boolean;
 }
 
 // Função para formatar tempo relativo (pt-BR)
@@ -40,6 +42,7 @@ export default function MessageItem({
   message,
   isSender,
   color,
+  seen,
 }: MessageItemProps) {
   // Extrai timestamp: pode ser Timestamp ou objeto {seconds, nanoseconds}
   let date: Date;
@@ -73,6 +76,14 @@ export default function MessageItem({
         </MessageUsername>
         <MessageText>{message.text}</MessageText>
         <MessageTime>{formattedTime}</MessageTime>
+
+        {seen
+          ? isSender && (
+              <MessageTime>
+                <IoCheckmarkDoneOutline />
+              </MessageTime>
+            )
+          : isSender && <IoCheckmarkOutline />}
       </MessageBubble>
       <MessageOptionsIcons />
     </MessageContainer>
