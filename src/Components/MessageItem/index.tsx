@@ -156,7 +156,7 @@ const MessageContainer = styled.div<{ isSender: boolean; dragged?: boolean }>`
     width: 35px;
     border-radius: 50%;
     object-fit: cover;
-    margin-right:  10px;
+    margin-right: 10px;
   }
 `;
 

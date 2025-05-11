@@ -96,7 +96,7 @@ export const ChatContainer = styled.div`
 export const MessagesContainer = styled.div`
   width: 100%;
   margin-top: 40px; /* Corrigido para evitar sobreposição */
-  margin-bottom: 40px;
+  padding-bottom: 40px;
 
   display: flex;
   flex-direction: column-reverse;
@@ -112,7 +112,7 @@ export const MessagesContainer = styled.div`
 export const ChatInputBar = styled.div`
   width: 100%;
   position: fixed;
-  padding: 2px 5px;
+  padding: 5px 5px;
   bottom: 0;
 
   form {
@@ -158,6 +158,10 @@ export const ChatInputBar = styled.div`
       object-fit: contain;
     }
   }
+
+  @media (min-width: 1000px) {
+    padding: 10px 10px;
+  }
 `;
 
 export const EnterContainer = styled.div`
@@ -199,4 +203,34 @@ export const EnterContainer = styled.div`
     font-size: 20px;
     background-color: #212433;
   }
+
+  .withGoogle {
+    width: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 20px;
+    cursor: pointer;
+    color: rgb(29, 29, 29);
+    background-color: #fff;
+
+    img {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+  }
+`;
+
+export const TypingIndicator = styled.div`
+  margin-bottom: 70px;
+
+  display: flex;
+  align-items: center;
+  color: #a7a7a7;
+  font-size: 14px;
+
+  font-style: italic;
 `;
