@@ -310,6 +310,7 @@ import {
   doc,
   arrayUnion,
   setDoc,
+  Timestamp,
 } from "firebase/firestore";
 import {
   createUserWithEmailAndPassword,
@@ -401,45 +402,6 @@ export default function App() {
   //   });
   //   return () => unsubscribe();
   // }, []);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u: FirebaseUser | null) => {
-      if (u) {
-        setEntered(true);
-
-        // 1. Nome
-        const name = u.email!.split("@")[0];
-        setUsername(name);
-
-        // 2. Foto: primeiro photoURL do Google, senão Dicebear
-        const avatarUrl =
-          u.photoURL && u.photoURL !== ""
-            ? u.photoURL
-            : `https://api.dicebear.com/6.x/pixel-art/svg?seed=${u.uid}`;
-        setAvatar(avatarUrl);
-
-        // 3. Persiste no Firestore
-        setDoc(
-          docRef(db, "users", u.uid),
-          { username: name, avatar: avatarUrl },
-          { merge: true }
-        );
-
-        // 4. Mensagem de “entrou”
-        addDoc(collection(db, "messages"), {
-          text: `${name} entrou no chat`,
-          timestamp: timestamp(),
-          system: true,
-          readBy: [name],
-        });
-      } else {
-        setEntered(false);
-        setUsername("");
-        setAvatar("");
-      }
-    });
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
@@ -545,10 +507,18 @@ export default function App() {
     e.preventDefault();
     const t = text.trim();
     if (!t) return;
+
+    const now = Timestamp.now();
+
+    const expiresAt = Timestamp.fromMillis(
+      now.toMillis() + 5 * 60 * 60 * 1000 // 5 horas em ms
+    );
+    
     await addDoc(collection(db, "messages"), {
       text: t,
       user: username,
       timestamp: timestamp(),
+      expiresAt,
       system: false,
       readBy: [username],
     });
