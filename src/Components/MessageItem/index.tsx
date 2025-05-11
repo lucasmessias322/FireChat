@@ -9,6 +9,7 @@ interface MessageItemProps {
   isSender: boolean;
   color?: string;
   seen?: boolean;
+  avatar?: string;
 }
 
 // Função para formatar tempo relativo (pt-BR)
@@ -35,6 +36,7 @@ export default function MessageItem({
   isSender,
   color,
   seen,
+  avatar,
 }: MessageItemProps) {
   const MAX_PREVIEW = 200;
   const [expanded, setExpanded] = useState(false);
@@ -68,7 +70,7 @@ export default function MessageItem({
       <MessageBubble isSender={isSender}>
         <MessageUsername isSender={isSender} color={color}>
           {isSender
-            ? ""
+            ? "Você"
             : `~ ${message.user.charAt(0).toUpperCase()}${message.user.slice(
                 1
               )}`}
@@ -112,7 +114,7 @@ const MessageBubble = styled.div<{ isSender: boolean }>`
   border-top-left-radius: 0;
   max-width: 90%;
   ${({ isSender }) =>
-    isSender && `border-top-left-radius: 10px; border-top-right-radius: 0;`}
+    isSender && `border-top-left-radius: 10px; border-top-right-radius: 0; `}
 `;
 
 const MessageUsername = styled.div<{ isSender: boolean; color?: string }>`
@@ -120,7 +122,7 @@ const MessageUsername = styled.div<{ isSender: boolean; color?: string }>`
   font-size: 14px;
   color: ${({ color }) => color || "#e9d4c4"};
   font-weight: bold;
-  ${({ isSender }) => isSender && `color: #91ff00;`}
+  ${({ isSender }) => isSender && `color: #ff5100;`}
 `;
 
 const MessageText = styled.p`

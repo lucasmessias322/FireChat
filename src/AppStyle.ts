@@ -15,9 +15,11 @@ export const Header = styled.header`
   border-bottom: 0.5px solid #cccccc49;
 
   position: fixed;
+  top: 0;
   width: 100%;
   z-index: 99999;
   background-color: #181a25;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 
   h1 {
     font-size: 25px;
@@ -49,12 +51,23 @@ export const Menu = styled.div`
 `;
 
 export const MenuItem = styled.div`
-  padding: 10px 20px;
+  min-width: 200px;
+  padding: 20px 20px;
   font-size: 14px;
   color: #e9d4c4;
+  display: flex;
+  gap: 10px;
+  align-items: center;
   cursor: pointer;
   &:hover {
     background: #2a2f42;
+  }
+
+  img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 100%;
   }
 `;
 
@@ -99,7 +112,7 @@ export const MessagesContainer = styled.div`
 export const ChatInputBar = styled.div`
   width: 100%;
   position: fixed;
-  padding: 10px 5px;
+  padding: 2px 5px;
   bottom: 0;
 
   form {
@@ -114,7 +127,6 @@ export const ChatInputBar = styled.div`
     width: 100%;
     padding: 10px 10px;
 
-
     input {
       width: 100%;
       padding: 10px;
@@ -124,7 +136,6 @@ export const ChatInputBar = styled.div`
       background-color: transparent;
       color: #e9d4c4;
       background-color: #212433;
-      
     }
 
     .formitem {
