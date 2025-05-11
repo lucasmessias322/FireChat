@@ -1,6 +1,7 @@
 import styled from "styled-components";
 import { Timestamp } from "firebase/firestore";
 import { IoCheckmarkDoneOutline, IoCheckmarkOutline } from "react-icons/io5";
+import { useState } from "react";
 
 // Props do MessageItem
 interface MessageItemProps {
@@ -15,22 +16,13 @@ function timeAgo(date: Date): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffSec = Math.floor(diffMs / 1000);
-  if (diffSec < 60) {
-    return "Agora";
-  }
+  if (diffSec < 60) return "Agora";
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) {
-    return `há ${diffMin} min`;
-  }
+  if (diffMin < 60) return `há ${diffMin} min`;
   const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) {
-    return `há ${diffH} h`;
-  }
+  if (diffH < 24) return `há ${diffH} h`;
   const diffDays = Math.floor(diffH / 24);
-  if (diffDays < 7) {
-    return `há ${diffDays} dia${diffDays > 1 ? "s" : ""}`;
-  }
-  // Para >7 dias, exibe data completa
+  if (diffDays < 7) return `há ${diffDays} dia${diffDays > 1 ? "s" : ""}`;
   return date.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -44,9 +36,11 @@ export default function MessageItem({
   color,
   seen,
 }: MessageItemProps) {
-  // Extrai timestamp: pode ser Timestamp ou objeto {seconds, nanoseconds}
-  let date: Date;
+  const MAX_PREVIEW = 200;
+  const [expanded, setExpanded] = useState(false);
 
+  // Extrai timestamp
+  let date: Date;
   if (message.timestamp instanceof Timestamp) {
     date = message.timestamp.toDate();
   } else if (
@@ -58,32 +52,44 @@ export default function MessageItem({
   } else if (typeof message.timestamp === "number") {
     date = new Date(message.timestamp);
   } else {
-    date = new Date(); // fallback seguro
+    date = new Date();
   }
-
-  // Formata tempo relativo
   const formattedTime = timeAgo(date);
+
+  // Gera preview ou texto completo
+  const fullText = message.text as string;
+  const previewText =
+    fullText.length > MAX_PREVIEW && !expanded
+      ? fullText.slice(0, MAX_PREVIEW) + "..."
+      : fullText;
 
   return (
     <MessageContainer isSender={isSender}>
       <MessageBubble isSender={isSender}>
         <MessageUsername isSender={isSender} color={color}>
           {isSender
-            ? "Você"
-            : "~ " +
-              message.user.charAt(0).toUpperCase() +
-              message.user.slice(1)}
+            ? ""
+            : `~ ${message.user.charAt(0).toUpperCase()}${message.user.slice(
+                1
+              )}`}
         </MessageUsername>
-        <MessageText>{message.text}</MessageText>
-        <MessageTime>{formattedTime}</MessageTime>
 
-        {seen
-          ? isSender && (
-              <MessageTime>
-                <IoCheckmarkDoneOutline />
-              </MessageTime>
-            )
-          : isSender && <IoCheckmarkOutline />}
+        <MessageText>{previewText}</MessageText>
+        {fullText.length > MAX_PREVIEW && (
+          <ToggleButton onClick={() => setExpanded(!expanded)}>
+            {expanded ? "Ver menos" : "Ver mais"}
+          </ToggleButton>
+        )}
+
+        <MessageDataContainer>
+          <MessageTime>{formattedTime}</MessageTime>
+          {isSender &&
+            (seen ? (
+              <IoCheckmarkDoneOutline size={16} color="#4fc3f7" />
+            ) : (
+              <IoCheckmarkOutline size={16} color="#e9d4c4" />
+            ))}
+        </MessageDataContainer>
       </MessageBubble>
       <MessageOptionsIcons />
     </MessageContainer>
@@ -117,17 +123,39 @@ const MessageUsername = styled.div<{ isSender: boolean; color?: string }>`
   ${({ isSender }) => isSender && `color: #91ff00;`}
 `;
 
-const MessageText = styled.div`
+const MessageText = styled.p`
+  max-width: 400px;
   font-size: 16px;
   color: white;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-word;
+  margin: 0;
+`;
+
+const ToggleButton = styled.button`
+  background: transparent;
+  border: none;
+  color: #4fc3f7;
+  cursor: pointer;
+  padding: 5px 0;
+  font-size: 14px;
+  align-self: flex-start;
 `;
 
 const MessageTime = styled.div`
   font-size: 12px;
   color: #a7a7a7;
-  padding-top: 10px;
 `;
 
 const MessageOptionsIcons = styled.div`
   padding: 10px;
+`;
+
+const MessageDataContainer = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 10px;
 `;

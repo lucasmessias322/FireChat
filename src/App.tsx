@@ -1,11 +1,9 @@
 // import * as C from "./AppStyle";
 // import MessageItem from "./Components/MessageItem";
+// import SystemMessage from "./Components/SystemMessage";
 // import { IoEllipsisVertical, IoSend } from "react-icons/io5";
 // import { useState, useEffect, FormEvent, useRef } from "react";
 // import { db, timestamp } from "./firebase";
-
-// import SystemMessage from "./Components/SystemMessage";
-
 // import {
 //   collection,
 //   query,
@@ -13,6 +11,9 @@
 //   onSnapshot,
 //   addDoc,
 //   DocumentData,
+//   writeBatch,
+//   doc,
+//   arrayUnion,
 // } from "firebase/firestore";
 
 // interface Message {
@@ -21,6 +22,7 @@
 //   user?: string;
 //   timestamp: { seconds: number; nanoseconds: number };
 //   system?: boolean;
+//   readBy?: string[];
 // }
 
 // // Paleta de cores para usuários
@@ -37,12 +39,10 @@
 //   "#a1887f",
 // ];
 
-// // Gera cor aleatória da paleta
 // function getRandomColor() {
 //   return colorPalette[Math.floor(Math.random() * colorPalette.length)];
 // }
 
-// // Retorna cor do usuário (persistida no localStorage)
 // function getUserColor(user: string) {
 //   const key = `color_${user}`;
 //   let color = localStorage.getItem(key);
@@ -59,44 +59,69 @@
 //   const [messages, setMessages] = useState<Message[]>([]);
 //   const [text, setText] = useState<string>("");
 //   const [showMenu, setShowMenu] = useState<boolean>(false);
-
-//   // Ref para scroll
 //   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+//   // Carrega mensagens e marca não-lidas como lidas
 //   useEffect(() => {
 //     const saved = localStorage.getItem("username");
 //     if (saved) {
 //       setUsername(saved);
 //       setEntered(true);
 //     }
-//     const q = query(collection(db, "messages"), orderBy("timestamp", "desc"));
+//     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
 //     const unsubscribe = onSnapshot(q, (snapshot) => {
 //       const msgs: Message[] = snapshot.docs.map((doc: DocumentData) => ({
 //         id: doc.id,
-//         ...(doc.data() as Omit<Message, "id">),
+//         ...(doc.data() as Message),
 //       }));
 //       setMessages(msgs);
 //     });
 //     return () => unsubscribe();
 //   }, []);
 
-//   // Scroll automático quando usuário atual manda mensagem
+//   // Marca mensagens como vistas
 //   useEffect(() => {
-//     if (messagesEndRef.current) {
-//       // verifica se última mensagem é do usuário atual
-//       const last = messages[0];
-//       if (last && last.user === username) {
-//         messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+//     if (!username) return;
+//     const batch = writeBatch(db);
+//     messages.forEach((m) => {
+//       if (!m.system && !m.readBy?.includes(username)) {
+//         const ref = doc(db, "messages", m.id);
+//         batch.update(ref, { readBy: arrayUnion(username) });
 //       }
-//     }
+//     });
+//     batch.commit();
 //   }, [messages, username]);
 
-//   const handleEnter = () => {
+//   // Auto-scroll
+//   useEffect(() => {
+//     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+//   }, [messages]);
+
+//   const handleEnter = async () => {
 //     const name = username.trim().toLowerCase();
 //     if (!name) return;
 //     localStorage.setItem("username", name);
 //     setUsername(name);
 //     setEntered(true);
+//     await addDoc(collection(db, "messages"), {
+//       text: `${name} entrou no chat`,
+//       timestamp: timestamp(),
+//       system: true,
+//       readBy: [name],
+//     });
+//   };
+
+//   const handleLogout = async () => {
+//     await addDoc(collection(db, "messages"), {
+//       text: `${username} saiu do chat`,
+//       timestamp: timestamp(),
+//       system: true,
+//       readBy: [username],
+//     });
+//     localStorage.removeItem("username");
+//     setEntered(false);
+//     setUsername("");
+//     setShowMenu(false);
 //   };
 
 //   const sendMessage = async (e: FormEvent) => {
@@ -106,19 +131,10 @@
 //       text,
 //       user: username,
 //       timestamp: timestamp(),
+//       system: false,
+//       readBy: [username],
 //     });
 //     setText("");
-//     // após enviar, scroll também
-//     if (messagesEndRef.current) {
-//       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-//     }
-//   };
-
-//   const handleLogout = () => {
-//     localStorage.removeItem("username");
-//     setEntered(false);
-//     setUsername("");
-//     setShowMenu(false);
 //   };
 
 //   if (!entered) {
@@ -144,7 +160,6 @@
 //         <h1>
 //           <b>Fire</b>Chat
 //         </h1>
-
 //         <C.MenuWrapper>
 //           <C.MenuIcon onClick={() => setShowMenu((s) => !s)}>
 //             <IoEllipsisVertical size={24} />
@@ -159,18 +174,23 @@
 
 //       <C.ChatContainer>
 //         <C.MessagesContainer>
-//           {messages.map((m) =>
-//             m.system ? (
-//               <SystemMessage key={m.id} message={m} />
-//             ) : (
-//               <MessageItem
-//                 key={m.id}
-//                 message={m}
-//                 isSender={m.user === username}
-//                 color={getUserColor(m.user!)}
-//               />
-//             )
-//           )}
+//           {messages
+//             .slice(0)
+//             .reverse()
+//             .map((m) =>
+//               m.system ? (
+//                 <SystemMessage key={m.id} message={m} />
+//               ) : (
+//                 <MessageItem
+//                   key={m.id}
+//                   message={m}
+//                   isSender={m.user === username}
+//                   color={getUserColor(m.user!)}
+//                   // Verifica se sender e já lida por alguém
+//                   seen={m.readBy?.length! > 1}
+//                 />
+//               )
+//             )}
 //         </C.MessagesContainer>
 //         <div ref={messagesEndRef} />
 //       </C.ChatContainer>
@@ -250,6 +270,8 @@ function getUserColor(user: string) {
   return color;
 }
 
+const MAX_MESSAGE_LENGTH = 400; // Limite de caracteres por mensagem
+
 function App() {
   const [entered, setEntered] = useState<boolean>(false);
   const [username, setUsername] = useState<string>("");
@@ -323,9 +345,14 @@ function App() {
 
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!text.trim()) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    if (trimmed.length > MAX_MESSAGE_LENGTH) {
+      alert(`Mensagem muito longa (máx. ${MAX_MESSAGE_LENGTH} caracteres)`);
+      return;
+    }
     await addDoc(collection(db, "messages"), {
-      text,
+      text: trimmed,
       user: username,
       timestamp: timestamp(),
       system: false,
@@ -383,7 +410,6 @@ function App() {
                   message={m}
                   isSender={m.user === username}
                   color={getUserColor(m.user!)}
-                  // Verifica se sender e já lida por alguém
                   seen={m.readBy?.length! > 1}
                 />
               )
@@ -400,6 +426,7 @@ function App() {
             autoComplete="off"
             value={text}
             onChange={(e) => setText(e.target.value)}
+            maxLength={MAX_MESSAGE_LENGTH}
           />
           <button type="submit">
             <IoSend size={25} />

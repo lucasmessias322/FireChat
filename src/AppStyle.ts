@@ -20,7 +20,7 @@ export const Header = styled.header`
   background-color: #181a25;
 
   h1 {
-    font-size: 24px;
+    font-size: 25px;
     font-weight: bold;
 
     b {
@@ -92,7 +92,7 @@ export const MessagesContainer = styled.div`
 
   @media (min-width: 1000px) {
     margin-top: 70px; /* Corrigido para evitar sobreposição */
-    margin-bottom: 40px;
+    margin-bottom: 75px;
   }
 `;
 
@@ -114,6 +114,7 @@ export const ChatInputBar = styled.div`
     width: 100%;
     padding: 10px 10px;
 
+
     input {
       width: 100%;
       padding: 10px;
@@ -123,7 +124,7 @@ export const ChatInputBar = styled.div`
       background-color: transparent;
       color: #e9d4c4;
       background-color: #212433;
-      border-radius: 10px;
+      
     }
 
     .formitem {
