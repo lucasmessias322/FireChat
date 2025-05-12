@@ -8,76 +8,55 @@ export const Container = styled.div`
   font-size: 16px;
 `;
 
-export const Header = styled.header`
-  display: flex;
-  justify-content: space-between;
-  padding: 20px;
-  border-bottom: 0.5px solid #cccccc49;
 
-  position: fixed;
-  top: 0;
-  width: 100%;
-  z-index: 99999;
-  background-color: #181a25;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 
-  h1 {
-    font-size: 25px;
-    font-weight: bold;
+// export const MenuWrapper = styled.div`
+//   position: relative;
+// `;
 
-    b {
-      color: #ff5100;
-    }
-  }
-`;
+// export const MenuIcon = styled.div`
+//   cursor: pointer;
+//   color: #e9d4c4;
+// `;
 
-export const MenuWrapper = styled.div`
-  position: relative;
-`;
+// export const Menu = styled.div`
+//   position: absolute;
+//   top: 30px;
+//   right: 0;
+//   background: #212433;
+//   border-radius: 5px;
+//   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+//   overflow: hidden;
+// `;
 
-export const MenuIcon = styled.div`
-  cursor: pointer;
-  color: #e9d4c4;
-`;
+// export const MenuItem = styled.div`
+//   min-width: 200px;
+//   padding: 20px 20px;
+//   font-size: 14px;
+//   color: #e9d4c4;
+//   display: flex;
+//   gap: 10px;
+//   align-items: center;
+//   cursor: pointer;
+//   &:hover {
+//     background: #2a2f42;
+//   }
 
-export const Menu = styled.div`
-  position: absolute;
-  top: 30px;
-  right: 0;
-  background: #212433;
-  border-radius: 5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  overflow: hidden;
-`;
+//   img {
+//     width: 50px;
+//     height: 50px;
+//     object-fit: contain;
+//     border-radius: 100%;
+//   }
+// `;
 
-export const MenuItem = styled.div`
-  min-width: 200px;
-  padding: 20px 20px;
-  font-size: 14px;
-  color: #e9d4c4;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  cursor: pointer;
-  &:hover {
-    background: #2a2f42;
-  }
-
-  img {
-    width: 50px;
-    height: 50px;
-    object-fit: contain;
-    border-radius: 100%;
-  }
-`;
-
-export const LogoutButton = styled.button`
-  background: transparent;
-  border: none;
-  color: #ff5100;
-  cursor: pointer;
-  font-size: 14px;
-`;
+// export const LogoutButton = styled.button`
+//   background: transparent;
+//   border: none;
+//   color: #ff5100;
+//   cursor: pointer;
+//   font-size: 14px;
+// `;
 
 export const ChatContainer = styled.div`
   width: 100%;
@@ -164,65 +143,141 @@ export const ChatInputBar = styled.div`
   }
 `;
 
-export const EnterContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
+// export const EnterContainer = styled.div`
+//   display: flex;
+//   flex-direction: column;
+//   align-items: center;
+//   justify-content: center;
+//   height: 100vh;
 
-  h2 {
-    font-size: 30px;
-    color: #e9d4c4;
-    margin-bottom: 20px;
+//   padding: 40px 10px;
 
-    b {
-      color: #ff5100;
-    }
-  }
+//   h2 {
+//     font-size: 30px;
+//     color: #e9d4c4;
+//     margin-bottom: 20px;
 
-  input {
-    margin: 10px;
-    padding: 10px;
-    border: 0;
-    outline: none;
-    font-size: 20px;
-    background-color: transparent;
-    color: #e9d4c4;
-    background-color: #212433;
-    border-radius: 10px;
-  }
+//     b {
+//       color: #ff5100;
+//     }
+//   }
 
-  button {
-    border: 0;
-    padding: 10px;
-    border-radius: 5px;
-    background-color: transparent;
-    cursor: pointer;
-    color: #e9d4c4;
-    font-size: 20px;
-    background-color: #212433;
-  }
+//   p {
+//     font-size: 20px;
+//     color: #e9d4c4;
+//     //margin-top: 20px;
 
-  .withGoogle {
-    width: 300px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    margin: 20px;
-    cursor: pointer;
-    color: rgb(29, 29, 29);
-    background-color: #fff;
+//     b {
+//       color: #ff5100;
+//     }
+//   }
 
-    img {
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-  }
-`;
+//   input {
+//     margin: 10px;
+//     padding: 10px;
+//     border: 0;
+//     outline: none;
+//     font-size: 20px;
+//     background-color: transparent;
+//     color: #e9d4c4;
+//     background-color: #212433;
+//     border-radius: 10px;
+//   }
+
+//   button {
+//     border: 0;
+//     padding: 10px;
+//     border-radius: 5px;
+//     background-color: transparent;
+//     cursor: pointer;
+//     color: #e9d4c4;
+//     font-size: 20px;
+//     background-color: #212433;
+//     margin: 10px 0px;
+//   }
+
+//   .withGoogle {
+//     width: 300px;
+//     display: flex;
+//     align-items: center;
+//     justify-content: center;
+//     gap: 10px;
+//     margin: 20px;
+//     cursor: pointer;
+//     color: rgb(29, 29, 29);
+//     background-color: #fff;
+
+//     img {
+//       width: 30px;
+//       height: 30px;
+//       border-radius: 50%;
+//       object-fit: cover;
+//     }
+//   }
+// `;
+
+// export const FormContainer = styled.div`
+//   display: flex;
+//   flex-direction: column;
+//   align-items: center;
+
+//   height: 100vh;
+
+//   h2 {
+//     font-size: 30px;
+//     color: #e9d4c4;
+//     margin-bottom: 20px;
+
+//     b {
+//       color: #ff5100;
+//     }
+//   }
+
+//   input {
+//     width: 100%;
+//     margin: 10px;
+//     padding: 10px;
+//     border: 0;
+//     outline: none;
+//     font-size: 20px;
+//     background-color: transparent;
+//     color: #e9d4c4;
+//     background-color: #212433;
+//     border-radius: 10px;
+//   }
+
+//   button {
+//     width: 100%;
+//     border: 0;
+//     padding: 10px;
+//     border-radius: 5px;
+//     background-color: transparent;
+//     cursor: pointer;
+//     color: #e9d4c4;
+//     font-size: 20px;
+//     background-color: #212433;
+//     margin: 10px 0px;
+//   }
+// `;
+
+// export const Logo = styled.div`
+//   text-align: center;
+//   h1 {
+//     font-size: 50px;
+//     font-weight: bold;
+//     padding-bottom: 20px;
+
+//     b {
+//       color: #ff5100;
+//     }
+//   }
+
+//   p {
+//     font-size: 16px;
+//     color: #e9d4c4;
+//     padding: 5px 0px;
+//   }
+// `;
 
 export const TypingIndicator = styled.div`
   margin-bottom: 70px;

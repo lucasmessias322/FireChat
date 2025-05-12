@@ -1,8 +1,8 @@
 import * as C from "./AppStyle";
 import MessageItem from "./Components/MessageItem";
 import SystemMessage from "./Components/SystemMessage";
-import { IoEllipsisVertical, IoExitOutline, IoSend } from "react-icons/io5";
-import { FcGoogle } from "react-icons/fc";
+import { IoSend } from "react-icons/io5";
+
 import { useState, useEffect, FormEvent, useRef } from "react";
 import { db, timestamp, auth } from "./firebase";
 import {
@@ -29,6 +29,13 @@ import {
   User as FirebaseUser,
 } from "firebase/auth";
 
+// React-Toastify
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Header from "./Components/Header";
+import SigningAndLogin from "./Components/SigningAndLogin";
+import styled from "styled-components";
+
 interface Message {
   id: string;
   text: string;
@@ -42,6 +49,30 @@ interface User {
   username: string;
   avatar: string;
 }
+
+const colorPalette = [
+  "#e57373",
+  "#ba68c8",
+  "#7986cb",
+  "#4fc3f7",
+  "#4db6ac",
+  "#81c784",
+  "#dce775",
+  "#ffd54f",
+  "#ffb74d",
+  "#a1887f",
+];
+const getRandomColor = () =>
+  colorPalette[Math.floor(Math.random() * colorPalette.length)];
+const getUserColor = (u: string) => {
+  const key = `color_${u}`;
+  let c = localStorage.getItem(key);
+  if (!c) {
+    c = getRandomColor();
+    localStorage.setItem(key, c);
+  }
+  return c;
+};
 
 export default function App() {
   const [entered, setEntered] = useState(false);
@@ -57,30 +88,6 @@ export default function App() {
   const [showMenu, setShowMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const typingTimeout = useRef<NodeJS.Timeout>();
-
-  const colorPalette = [
-    "#e57373",
-    "#ba68c8",
-    "#7986cb",
-    "#4fc3f7",
-    "#4db6ac",
-    "#81c784",
-    "#dce775",
-    "#ffd54f",
-    "#ffb74d",
-    "#a1887f",
-  ];
-  const getRandomColor = () =>
-    colorPalette[Math.floor(Math.random() * colorPalette.length)];
-  const getUserColor = (u: string) => {
-    const key = `color_${u}`;
-    let c = localStorage.getItem(key);
-    if (!c) {
-      c = getRandomColor();
-      localStorage.setItem(key, c);
-    }
-    return c;
-  };
 
   // ✨ Auth state listener: marca entered e define username/avatar
   useEffect(() => {
@@ -105,6 +112,7 @@ export default function App() {
           system: true,
           readBy: [name],
         });
+        toast.success(`Bem-vindo, ${name}!`);
       } else {
         setEntered(false);
         setUsername("");
@@ -118,7 +126,9 @@ export default function App() {
   useEffect(() => {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     return onSnapshot(q, (snap) =>
-      setMessages(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Message) })))
+      setMessages(
+        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Message) }))
+      )
     );
   }, []);
 
@@ -173,16 +183,22 @@ export default function App() {
   // Login / signup
   const handleAuth = async () => {
     const name = inputName.trim().toLowerCase();
-    if (!name || !inputPass) return;
+    if (!name || !inputPass) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
     const email = fakeEmail(name);
     try {
-      if (loginMode === "login")
+      if (loginMode === "login") {
         await signInWithEmailAndPassword(auth, email, inputPass);
-      else
+        //toast.success("Login realizado com sucesso");
+      } else {
         await createUserWithEmailAndPassword(auth, email, inputPass);
+        //toast.success("Cadastro realizado com sucesso");
+      }
       setInputPass("");
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -190,8 +206,9 @@ export default function App() {
   const handleGoogleLogin = async () => {
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
+      //toast.success("Login com Google realizado com sucesso");
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err.message);
     }
   };
 
@@ -205,75 +222,90 @@ export default function App() {
     });
     await fbSignOut(auth);
     setShowMenu(false);
-  };
-
-  // Typing indicator
-  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setText(e.target.value);
-    const uid = auth.currentUser!.uid;
-    setDoc(doc(db, "typing", uid), { typing: true, lastUpdated: timestamp() });
-    if (typingTimeout.current) clearTimeout(typingTimeout.current);
-    typingTimeout.current = setTimeout(
-      () =>
-        setDoc(doc(db, "typing", uid), {
-          typing: false,
-          lastUpdated: timestamp(),
-        }),
-      1000
-    );
+    toast.info("Você saiu do chat");
   };
 
   // Envia mensagem
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault();
     const t = text.trim();
-    if (!t) return;
-    const now = Timestamp.now();
-    const expiresAt = Timestamp.fromMillis(
-      now.toMillis() + 5 * 60 * 60 * 1000 // 5 horas
-    );
-    await addDoc(collection(db, "messages"), {
-      text: t,
-      user: username,
-      timestamp: timestamp(),
-      expiresAt,
-      system: false,
-      readBy: [username],
-    });
-    setText("");
-    const uid = auth.currentUser!.uid;
-    setDoc(doc(db, "typing", uid), { typing: false, lastUpdated: timestamp() });
+    if (!t) {
+      toast.error("Mensagem vazia não pode ser enviada");
+      return;
+    }
+    try {
+      const now = Timestamp.now();
+      const expiresAt = Timestamp.fromMillis(
+        now.toMillis() + 5 * 60 * 60 * 1000 // 5 horas
+      );
+      await addDoc(collection(db, "messages"), {
+        text: t,
+        user: username,
+        timestamp: timestamp(),
+        expiresAt,
+        system: false,
+        readBy: [username],
+      });
+      setText("");
+      const uid = auth.currentUser!.uid;
+      setDoc(doc(db, "typing", uid), {
+        typing: false,
+        lastUpdated: timestamp(),
+      });
+      //toast.success("Mensagem enviada");
+    } catch (err: any) {
+      toast.error(`Erro ao enviar mensagem: ${err.message}`);
+    }
   };
 
+  // Delete message
   const handleDelete = async (id: string, owner?: string) => {
-    if (owner !== username) return;
-    if (window.confirm("Confirma exclusão?"))
+    // só o dono da mensagem ou o usuário "lucas" podem deletar
+    if (
+      (owner !== username && username.toLowerCase() !== "lucas") ||
+      username.toLowerCase() !== " ucasmessiaspereira322"
+    ) {
+      toast.error("Você não tem permissão para deletar esta mensagem");
+      return;
+    }
+
+    try {
       await deleteDoc(docRef(db, "messages", id));
+      //toast.success("Mensagem excluída");
+    } catch (err: any) {
+      toast.error(`Erro ao excluir: ${err.message}`);
+    }
   };
 
   if (!entered)
     return (
-      <SigningAndLogin
-        loginMode={loginMode}
-        setLoginMode={setLoginMode}
-        handleGoogleLogin={handleGoogleLogin}
-        handleAuth={handleAuth}
-        inputName={inputName}
-        setInputName={setInputName}
-        inputPass={inputPass}
-        setInputPass={setInputPass}
-      />
+      <>
+        <ToastContainer position="top-right" />
+        <SigningAndLogin
+          loginMode={loginMode}
+          setLoginMode={setLoginMode}
+          handleGoogleLogin={handleGoogleLogin}
+          handleAuth={handleAuth}
+          inputName={inputName}
+          setInputName={setInputName}
+          inputPass={inputPass}
+          setInputPass={setInputPass}
+        />
+      </>
     );
 
   return (
     <C.Container>
+      <ToastContainer position="top-right" />
       <Header
         setShowMenu={setShowMenu}
         showMenu={showMenu}
         username={username}
         avatar={avatar}
         handleLogout={handleLogout}
-      />
+      >
+      
+      </Header>
       <C.ChatContainer>
         <C.MessagesContainer>
           {messages
@@ -291,6 +323,7 @@ export default function App() {
                   seen={m.readBy!.length > 1}
                   onDelete={() => handleDelete(m.id, m.user)}
                   avatar={usersData.find((u) => u.uid === m.user)?.avatar || ""}
+                  username={username}
                 />
               )
             )}
@@ -298,7 +331,8 @@ export default function App() {
 
         {typingUsers.length > 0 && (
           <C.TypingIndicator>
-            {typingUsers.join(", ")} {typingUsers.length === 1 ? "está" : "estão"} digitando...
+            {typingUsers.join(", ")}{" "}
+            {typingUsers.length === 1 ? "está" : "estão"} digitando...
           </C.TypingIndicator>
         )}
 
@@ -307,87 +341,26 @@ export default function App() {
 
       <SendMessageForm
         text={text}
-        handleTextChange={handleTextChange}
+        handleTextChange={(e) => {
+          setText(e.target.value);
+          const uid = auth.currentUser!.uid;
+          setDoc(doc(db, "typing", uid), {
+            typing: true,
+            lastUpdated: timestamp(),
+          });
+          if (typingTimeout.current) clearTimeout(typingTimeout.current);
+          typingTimeout.current = setTimeout(
+            () =>
+              setDoc(doc(db, "typing", uid), {
+                typing: false,
+                lastUpdated: timestamp(),
+              }),
+            1000
+          );
+        }}
         sendMessage={sendMessage}
       />
     </C.Container>
-  );
-}
-
-
-function Header({
-  setShowMenu,
-  showMenu,
-  username,
-  avatar,
-  handleLogout,
-}: any) {
-  return (
-    <C.Header>
-      <h1>
-        <b>Fire</b>Chat
-      </h1>
-      <C.MenuWrapper>
-        <C.MenuIcon onClick={() => setShowMenu((s: any) => !s)}>
-          <IoEllipsisVertical size={24} />
-        </C.MenuIcon>
-        {showMenu && (
-          <C.Menu>
-            <C.MenuItem>
-              <img src={avatar} alt="avatar" width={32} height={32} />{" "}
-              {username}
-            </C.MenuItem>
-            <C.MenuItem onClick={handleLogout}>
-              <IoExitOutline size={20} color="red" /> Sair
-            </C.MenuItem>
-          </C.Menu>
-        )}
-      </C.MenuWrapper>
-    </C.Header>
-  );
-}
-
-function SigningAndLogin({
-  loginMode,
-  setLoginMode,
-  handleGoogleLogin,
-  handleAuth,
-  inputName,
-  setInputName,
-  inputPass,
-  setInputPass,
-}: any) {
-  return (
-    <C.EnterContainer>
-      <h2>{loginMode === "login" ? "Entrar" : "Cadastrar"}</h2>
-      <button className="withGoogle" onClick={handleGoogleLogin}>
-        <FcGoogle size={24} /> Entrar com Google
-      </button>
-      <input
-        placeholder="Nome de usuário"
-        value={inputName}
-        onChange={(e) => setInputName(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Senha"
-        value={inputPass}
-        onChange={(e) => setInputPass(e.target.value)}
-      />
-      <button onClick={handleAuth}>
-        {loginMode === "login" ? "Entrar" : "Cadastrar"}
-      </button>
-      <p
-        style={{ cursor: "pointer" }}
-        onClick={() =>
-          setLoginMode((m: any) => (m === "login" ? "signup" : "login"))
-        }
-      >
-        {loginMode === "login"
-          ? "Não tem conta? Cadastre-se"
-          : "Já tem conta? Entre"}
-      </p>
-    </C.EnterContainer>
   );
 }
 
@@ -417,3 +390,24 @@ function SendMessageForm({
     </C.ChatInputBar>
   );
 }
+
+const MenuItem = styled.div`
+  min-width: 200px;
+  padding: 20px 20px;
+  font-size: 14px;
+  color: #e9d4c4;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+  &:hover {
+    background: #2a2f42;
+  }
+
+  img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 100%;
+  }
+`;
