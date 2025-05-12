@@ -280,7 +280,7 @@ export default function MessageItem({
   const [startX, setStartX] = useState<number | null>(null);
 
   // Permissão de exclusão: proprietário ou usuário 'lucas'
-  const canDelete = isSender || username.toLowerCase() === "lucas";
+  const canDelete = isSender || username.toLowerCase() === "lucasmessiaspereira322" || username.toLowerCase() ==="lucas";
 
   // Extrai timestamp
   let date: Date;
