@@ -7,6 +7,7 @@ function Header({
   username,
   avatar,
   handleLogout,
+  onClickUsers
 }: any) {
   return (
     <HeaderWrapper>
@@ -23,7 +24,7 @@ function Header({
               <img src={avatar} alt="avatar" width={32} height={32} />{" "}
               {username}
             </MenuItem>
-            <MenuItem>Usuarios</MenuItem>
+            <MenuItem onClick={onClickUsers}>Usuarios</MenuItem>
             <MenuItem onClick={handleLogout}>
               <IoExitOutline size={20} color="red" /> Sair
             </MenuItem>
