@@ -5,12 +5,11 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [
     react(),
-
     VitePWA({
       registerType: "prompt",
       injectRegister: "auto",
       srcDir: "src",
-      filename: "sw.ts", // <- Aqui indicamos o SW personalizado
+      filename: "sw.ts", // seu SW customizado para Web‑Push
       manifest: {
         name: "FireChat",
         short_name: "FireChat",
@@ -19,17 +18,11 @@ export default defineConfig({
         background_color: "#181a25",
         display: "standalone",
         start_url: "/",
+        // obrigatório para FCM em Android PWA background
+        gcm_sender_id: "103953800507",
         icons: [
-          {
-            src: "/icon.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "/icon.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
+          { src: "/icon.png", sizes: "192x192", type: "image/png" },
+          { src: "/icon.png", sizes: "512x512", type: "image/png" },
         ],
       },
       workbox: {
@@ -45,9 +38,10 @@ export default defineConfig({
         suppressWarnings: true,
       },
     }),
-    ,
-  ],
+  ],  // <— fecha plugins array, sem vírgula extra
+  // garante que o SW do Firebase (public/firebase-messaging-sw.js) seja incluído no build
   assetsInclude: ["firebase-messaging-sw.js"],
+
   server: {
     host: true,
   },
