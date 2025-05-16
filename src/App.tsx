@@ -27,6 +27,8 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
 } from "firebase/auth";
+import { messaging } from "./firebase"; // exporte getMessaging(app) no seu firebase.ts
+import { getToken, onMessage } from "firebase/messaging";
 
 // React-Toastify
 import { ToastContainer, toast } from "react-toastify";
@@ -230,6 +232,36 @@ export default function App() {
 
     return () => unsubscribe();
   }, [username]);
+
+  useEffect(() => {
+    if (Notification.permission !== "granted") return;
+
+    // registra o SW do Firebase (em public/firebase-messaging-sw.js)
+    navigator.serviceWorker
+      .register("/firebase-messaging-sw.js")
+      .then((registration) => {
+        // pede o token
+        return getToken(messaging, {
+          vapidKey: "SUA_VAPID_KEY_DO_FIREBASE",
+          serviceWorkerRegistration: registration,
+        });
+      })
+      .then((token) => {
+        console.log("FCM token:", token);
+        // envie esse token para o seu backend ou salve no Firestore:
+        // fetch('/api/save-fcm-token', { method:'POST', body:JSON.stringify({ uid: auth.currentUser?.uid, token }) })
+      })
+      .catch(console.error);
+  }, []);
+  useEffect(() => {
+    onMessage(messaging, (payload) => {
+      const { title, body } = payload.notification!;
+      new Notification(title || "Nova mensagem", {
+        body: body || "",
+        icon: "/icon.png",
+      });
+    });
+  }, []);
 
   const fakeEmail = (name: string) => `${name}@chat.app`;
 

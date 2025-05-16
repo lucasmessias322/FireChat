@@ -47,7 +47,7 @@ export default defineConfig({
     }),
     ,
   ],
-
+  assetsInclude: ["firebase-messaging-sw.js"],
   server: {
     host: true,
   },
