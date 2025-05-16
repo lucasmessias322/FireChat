@@ -4,6 +4,7 @@ import { getFirestore, serverTimestamp } from "firebase/firestore";
 import { getAuth, signInAnonymously, onAuthStateChanged, User } from "firebase/auth";
 
 
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string,
