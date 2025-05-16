@@ -242,7 +242,7 @@ interface MessageItemProps {
   color?: string;
   seen?: boolean;
   avatar?: string;
-  username?: string;    // Nome do usuário logado
+  username?: string; // Nome do usuário logado
   onDelete?: () => void;
 }
 
@@ -280,7 +280,10 @@ export default function MessageItem({
   const [startX, setStartX] = useState<number | null>(null);
 
   // Permissão de exclusão: proprietário ou usuário 'lucas'
-  const canDelete = isSender || username.toLowerCase() === "lucasmessiaspereira322" || username.toLowerCase() ==="lucas";
+  const canDelete =
+    isSender ||
+    username.toLowerCase() === "lucasmessiaspereira322" ||
+    username.toLowerCase() === "lucas";
 
   // Extrai timestamp
   let date: Date;
@@ -333,7 +336,7 @@ export default function MessageItem({
       onTouchEnd={canDelete ? handleTouchEnd : undefined}
     >
       <div className="first-child">
-        {avatar && <img src={avatar} alt="" />}
+        {/* {avatar && <img src={avatar} alt="" />} */}
         <MessageBubble isSender={isSender}>
           <MessageUsername isSender={isSender} color={color}>
             {isSender

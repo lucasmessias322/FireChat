@@ -669,6 +669,30 @@ export default function App() {
     }
   };
 
+  // Delete message
+  // Delete message
+  const handleDelete = async (id: string, owner?: string) => {
+    // só o dono da mensagem ou o usuário "lucas" podem deletar
+    if (
+      owner !== username &&
+      username.toLowerCase() !== "lucas" &&
+      username.toLowerCase() !== "lucasmessiaspereira322" &&
+      username.toLowerCase() !== "admin"
+    ) {
+      toast.error("Você não tem permissão para deletar esta mensagem");
+      return;
+    }
+
+    if (window.confirm("Confirma exclusão?")) {
+      try {
+        await deleteDoc(docRef(db, "messages", id));
+        toast.success("Mensagem excluída");
+      } catch (err: any) {
+        toast.error(`Erro ao excluir: ${err.message}`);
+      }
+    }
+  };
+
   if (!entered)
     return (
       <>
@@ -704,7 +728,7 @@ export default function App() {
             .reverse()
             .map((m) =>
               m.system ? (
-                <SystemMessage key={m.id} message={m} />
+                username == "lucas" && <SystemMessage key={m.id} message={m} />
               ) : (
                 <MessageItem
                   key={m.id}
@@ -712,7 +736,7 @@ export default function App() {
                   isSender={m.user === username}
                   color={getUserColor(m.user!)}
                   seen={m.readBy!.length > 1}
-                  onDelete={() => {}}
+                  onDelete={() => handleDelete(m.id, m.user)}
                   avatar={usersData.find((u) => u.uid === m.user)?.avatar || ""}
                   username={username}
                 />
@@ -729,7 +753,7 @@ export default function App() {
       </C.ChatContainer>
       <SendMessageForm
         text={text}
-        handleTextChange={(e:any) => {
+        handleTextChange={(e: any) => {
           setText(e.target.value);
           const uid = auth.currentUser!.uid;
           setDoc(doc(db, "typing", uid), {
