@@ -663,7 +663,7 @@ export default function App() {
         typing: false,
         lastUpdated: timestamp(),
       });
-      toast.success("Mensagem enviada");
+      //toast.success("Mensagem enviada");
     } catch (err: any) {
       toast.error(`Erro ao enviar mensagem: ${err.message}`);
     }
