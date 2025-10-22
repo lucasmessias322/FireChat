@@ -1,5 +1,6 @@
 import { FcGoogle } from "react-icons/fc";
 import styled from "styled-components";
+import FireLogo from "../assets/Firechat.png";
 
 function SigningAndLogin({
   loginMode,
@@ -14,9 +15,13 @@ function SigningAndLogin({
   return (
     <EnterContainer>
       <Logo>
-        <h1>
-          <b>Fire</b>Chat
-        </h1>
+        <div>
+          <img src={FireLogo} alt="" />
+          <h1>
+            <b>Fire</b>Chat
+          </h1>
+        </div>
+
         <p>Chat em tempo real com Firebase</p>
       </Logo>
       {loginMode === "login" ? (
@@ -196,13 +201,22 @@ const FormContainer = styled.div`
 
 const Logo = styled.div`
   text-align: center;
-  h1 {
-    font-size: 50px;
-    font-weight: bold;
-    padding-bottom: 20px;
+  div {
+    display: flex;
+    img {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      margin-right: 5px;
+    }
+    h1 {
+      font-size: 50px;
+      font-weight: bold;
+      padding-bottom: 20px;
 
-    b {
-      color: #ff5100;
+      b {
+        color: #ff5100;
+      }
     }
   }
 

@@ -5,8 +5,8 @@ self.addEventListener('push', (event: PushEvent) => {
   const title = data?.title || "Nova Mensagem";
   const options = {
     body: data?.body || "Você recebeu uma nova mensagem.",
-    icon: "/icon.png",
-    badge: "/icon.png",
+    icon: "/assets/Firechat.png",
+    badge: "/assets/Firechat.png",
   };
 
   event.waitUntil(

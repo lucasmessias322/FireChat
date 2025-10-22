@@ -94,7 +94,7 @@ export default function App() {
 
   Notification.requestPermission().then((permission) => {
     if (permission === "granted") {
-      console.log("Permissão concedida para notificações.");
+      //console.log("Permissão concedida para notificações.");
     }
   });
 
