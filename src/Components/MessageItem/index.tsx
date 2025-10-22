@@ -108,12 +108,19 @@ export default function MessageItem({
         {!isSender && (
           <img
             src={
-              avatar ||
-              "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png"
+              avatar && avatar.trim() !== ""
+                ? avatar
+                : "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
             }
-            alt=""
+            alt={`Avatar de ${message.user}`}
+            onError={(e) => {
+              // Se a imagem quebrar, troca por fallback
+              e.currentTarget.src =
+                "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
+            }}
           />
         )}
+
         <MessageBubble isSender={isSender}>
           <MessageUsername isSender={isSender} color={color}>
             {isSender
@@ -174,8 +181,6 @@ const MessageContainer = styled.div<{ isSender: boolean; dragged?: boolean }>`
       margin-right: 10px;
     }
   }
-
-
 `;
 
 const DeleteIcon = styled.div`

@@ -1,9 +1,10 @@
 import * as C from "./AppStyle";
 import MessageItem from "./Components/MessageItem";
 import SystemMessage from "./Components/SystemMessage";
-import { IoSend } from "react-icons/io5";
+import { IoExitOutline, IoSend } from "react-icons/io5";
 import { useState, useEffect, FormEvent, useRef } from "react";
 import { db, timestamp, auth } from "./firebase";
+import FireLogo from "./assets/Firechat.png";
 import {
   collection,
   query,
@@ -36,6 +37,8 @@ import "react-toastify/dist/ReactToastify.css";
 import Header from "./Components/Header";
 import SigningAndLogin from "./Components/SigningAndLogin";
 import styled from "styled-components";
+import SendMessageForm from "./Components/SendMessageForm";
+import { IoIosArrowBack } from "react-icons/io";
 
 interface Message {
   id: string;
@@ -91,6 +94,8 @@ export default function App() {
   const [showUsersList, setShowUsersList] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const typingTimeout = useRef<NodeJS.Timeout>();
+
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
 
   Notification.requestPermission().then((permission) => {
     if (permission === "granted") {
@@ -381,6 +386,7 @@ export default function App() {
   return (
     <C.Container>
       <ToastContainer position="top-right" />
+
       <Header
         setShowMenu={setShowMenu}
         showMenu={showMenu}
@@ -388,7 +394,45 @@ export default function App() {
         avatar={avatar}
         handleLogout={handleLogout}
         onClickUsers={() => setShowUsersList((v) => !v)}
+        onOpenGroupInfo={() => setShowGroupInfo(true)} // 👈 novo
       />
+
+      {showGroupInfo && (
+        <GroupInfoOverlay>
+          <GroupInfoContent>
+            <GroupHeader>
+              <IoIosArrowBack
+                size={30}
+                onClick={() => setShowGroupInfo(false)}
+              />
+              <h1>
+                <b>Fire</b>Chat
+              </h1>
+            </GroupHeader>
+
+            <GroupInfoBox>
+              <img src={FireLogo} alt="Firechat Logo" />
+              <p>
+                Grupo oficial do chat. Aqui todos podem conversar livremente!
+              </p>
+            </GroupInfoBox>
+
+            <h4>Participantes ({usersData.length})</h4>
+            <UsersList>
+              {usersData.map((u) => (
+                <UserItem key={u.uid}>
+                  <img src={u.avatar} alt={u.username} />
+                  <strong>{u.username}</strong>
+                  <Status online={!!u.online}>
+                    {u.online ? "Online" : "Offline"}
+                  </Status>
+                </UserItem>
+              ))}
+            </UsersList>
+          </GroupInfoContent>
+        </GroupInfoOverlay>
+      )}
+
       <C.ChatContainer>
         <C.MessagesContainer>
           {messages
@@ -405,7 +449,9 @@ export default function App() {
                   color={getUserColor(m.user!)}
                   seen={m.readBy!.length > 1}
                   onDelete={() => handleDelete(m.id, m.user)}
-                  avatar={usersData.find((u) => u.uid === m.user)?.avatar || ""}
+                  avatar={
+                    usersData.find((u) => u.username === m.user)?.avatar || ""
+                  }
                   username={username}
                 />
               )
@@ -440,7 +486,7 @@ export default function App() {
         }}
         sendMessage={sendMessage}
       />
-      {showUsersList && (
+      {/* {showUsersList && (
         <UsersOverlay>
           <UsersList>
             {usersData.map((u) => (
@@ -457,7 +503,7 @@ export default function App() {
             Fechar
           </CloseButton>
         </UsersOverlay>
-      )}
+      )} */}
     </C.Container>
   );
 }
@@ -465,24 +511,25 @@ export default function App() {
 // Styled overlay components
 const UsersOverlay = styled.div`
   position: fixed;
-  top: 0;
+  top: 70px;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  background-color: #181a25;
+  // background: rgba(0, 0, 0, 0.8);
+  // display: flex;
+  // flex-direction: column;
+  //align-items: center;
+  //justify-content: center;
+  z-index: 10;
 `;
 const UsersList = styled.div`
-  background: #1e2131;
-  border-radius: 8px;
-  padding: 20px;
-  max-height: 80%;
+  //background: #1e2131;
+
+  padding: 10px;
+  height: 100%;
+  width: 100%;
   overflow: auto;
-  width: 90%;
 `;
 
 const UserItem = styled.div`
@@ -490,47 +537,80 @@ const UserItem = styled.div`
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
-  //border-bottom: 1px solid gray;
+
   padding: 10px;
 
   img {
-    width: 40px;
-    height: 40px;
+    width: 45px;
+    height: 45px;
     border-radius: 50%;
     object-fit: cover;
-    background: #ff5100;
-    padding: 4px;
+    background: #1e2131;
+    padding: 5px;
   }
 `;
 const Status = styled.span<{ online: boolean }>`
   font-size: 12px;
   color: ${(p) => (p.online ? "#4caf50" : "#f44336")};
 `;
-const CloseButton = styled.button`
-  margin-top: 16px;
-  padding: 8px 16px;
-  background: #ff5100;
-  border: none;
+
+const GroupInfoOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #181a25;
   color: #fff;
-  border-radius: 4px;
-  cursor: pointer;
+  z-index: 100;
+  overflow-y: auto;
+  animation: fadeIn 0.3s ease-in-out;
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 `;
 
-function SendMessageForm({ text, handleTextChange, sendMessage }: any) {
-  return (
-    <C.ChatInputBar>
-      <form onSubmit={sendMessage}>
-        <input
-          type="text"
-          placeholder="Mensagem..."
-          autoComplete="off"
-          value={text}
-          onChange={handleTextChange}
-        />
-        <button type="submit">
-          <IoSend size={25} />
-        </button>
-      </form>
-    </C.ChatInputBar>
-  );
-}
+const GroupInfoContent = styled.div`
+  max-width: 600px;
+  margin: 0px auto;
+  padding: 10px 5px;
+`;
+
+const GroupHeader = styled.div`
+  display: flex;
+  width: 100%;
+  align-items: center;
+  background-color: #181a25;
+  gap: 5px;
+
+  margin-bottom: 40px;
+  padding: 20px 0px;
+  h1 {
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+
+    b {
+      color: #ff5100;
+    }
+  }
+`;
+
+const GroupInfoBox = styled.div`
+  text-align: center;
+  margin-bottom: 40px;
+
+  img {
+    width: 100px;
+    border-radius: 16px;
+    margin-bottom: 10px;
+  }
+`;
