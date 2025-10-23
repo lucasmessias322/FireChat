@@ -103,6 +103,132 @@ export default function App() {
     }
   });
 
+  // controla o status online com base em foco e visibilidade
+  // useEffect(() => {
+  //   if (!auth.currentUser) return;
+
+  //   const uid = auth.currentUser.uid;
+
+  //   let windowFocused = document.hasFocus();
+
+  //   const setOnlineStatus = async (status: boolean) => {
+  //     await setDoc(
+  //       docRef(db, "users", uid),
+  //       { online: status },
+  //       { merge: true }
+  //     );
+  //   };
+
+  //   const updateOnlineState = () => {
+  //     const isVisible = !document.hidden;
+  //     const isFocused = windowFocused;
+  //     setOnlineStatus(isVisible && isFocused);
+  //   };
+
+  //   const handleFocus = () => {
+  //     windowFocused = true;
+  //     updateOnlineState();
+  //   };
+
+  //   const handleBlur = () => {
+  //     windowFocused = false;
+  //     updateOnlineState();
+  //   };
+
+  //   const handleVisibility = () => {
+  //     updateOnlineState();
+  //   };
+
+  //   // Eventos de foco e visibilidade
+  //   window.addEventListener("focus", handleFocus);
+  //   window.addEventListener("blur", handleBlur);
+  //   document.addEventListener("visibilitychange", handleVisibility);
+
+  //   // Define como online ao entrar
+  //   updateOnlineState();
+
+  //   // Ao sair ou fechar aba
+  //   const handleUnload = async () => {
+  //     await setOnlineStatus(false);
+  //   };
+  //   window.addEventListener("beforeunload", handleUnload);
+
+  //   return () => {
+  //     window.removeEventListener("focus", handleFocus);
+  //     window.removeEventListener("blur", handleBlur);
+  //     document.removeEventListener("visibilitychange", handleVisibility);
+  //     window.removeEventListener("beforeunload", handleUnload);
+  //   };
+  // }, [auth.currentUser]);
+  // controla o status online com base em foco e visibilidade — versão confiável
+useEffect(() => {
+  if (!auth.currentUser) return;
+
+  const uid = auth.currentUser.uid;
+  let windowFocused = document.hasFocus();
+  let isVisible = !document.hidden;
+  let lastStatus = false; // evita updates repetidos
+
+  const setOnlineStatus = async (status: boolean) => {
+    if (status === lastStatus) return; // evita writes redundantes
+    lastStatus = status;
+    await setDoc(
+      docRef(db, "users", uid),
+      { online: status },
+      { merge: true }
+    );
+  };
+
+  const updateOnlineState = () => {
+    const onlineNow = windowFocused && isVisible;
+    setOnlineStatus(onlineNow);
+  };
+
+  const handleFocus = () => {
+    windowFocused = true;
+    updateOnlineState();
+  };
+
+  const handleBlur = () => {
+    windowFocused = false;
+    updateOnlineState();
+  };
+
+  const handleVisibility = () => {
+    isVisible = !document.hidden;
+    updateOnlineState();
+  };
+
+  // Eventos
+  window.addEventListener("focus", handleFocus);
+  window.addEventListener("blur", handleBlur);
+  document.addEventListener("visibilitychange", handleVisibility);
+
+  // Marca como online apenas se realmente estiver visível e focado
+  updateOnlineState();
+
+  // Ao sair, fecha aba ou perder conexão
+  const handleUnload = () => {
+    navigator.sendBeacon(
+      `${window.location.origin}/offline`, // endpoint fictício (não é usado)
+      JSON.stringify({ uid })
+    );
+    setDoc(docRef(db, "users", uid), { online: false }, { merge: true });
+  };
+  window.addEventListener("beforeunload", handleUnload);
+  window.addEventListener("pagehide", handleUnload);
+
+  return () => {
+    window.removeEventListener("focus", handleFocus);
+    window.removeEventListener("blur", handleBlur);
+    document.removeEventListener("visibilitychange", handleVisibility);
+    window.removeEventListener("beforeunload", handleUnload);
+    window.removeEventListener("pagehide", handleUnload);
+    setOnlineStatus(false);
+  };
+}, [entered]); // importante: só roda depois que o usuário entrou
+
+
   // Auth listener: update online status
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
@@ -175,17 +301,54 @@ export default function App() {
   }, [usersData]);
 
   // mark read
+
   useEffect(() => {
     if (!username) return;
-    const batch = writeBatch(db);
-    messages.forEach((m) => {
-      if (!m.system && !m.readBy?.includes(username)) {
-        batch.update(doc(db, "messages", m.id), {
-          readBy: arrayUnion(username),
-        });
+
+    let windowFocused = document.hasFocus(); // estado inicial
+
+    const markAsRead = () => {
+      if (document.hidden || !windowFocused) return; // só marca se visível e focado
+      const batch = writeBatch(db);
+      messages.forEach((m) => {
+        if (!m.system && !m.readBy?.includes(username)) {
+          batch.update(doc(db, "messages", m.id), {
+            readBy: arrayUnion(username),
+          });
+        }
+      });
+      batch.commit();
+    };
+
+    const handleVisibility = () => {
+      if (!document.hidden && windowFocused) {
+        markAsRead();
       }
-    });
-    batch.commit();
+    };
+
+    const handleFocus = () => {
+      windowFocused = true;
+      markAsRead();
+    };
+
+    const handleBlur = () => {
+      windowFocused = false;
+    };
+
+    // Executa quando a aba muda de visibilidade
+    document.addEventListener("visibilitychange", handleVisibility);
+    // Executa quando a janela ganha ou perde foco
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("blur", handleBlur);
+
+    // Executa uma vez ao carregar (se o usuário já estiver com a aba ativa)
+    markAsRead();
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("blur", handleBlur);
+    };
   }, [messages, username]);
 
   // autoscroll
@@ -258,6 +421,7 @@ export default function App() {
       })
       .catch(console.error);
   }, []);
+
   useEffect(() => {
     onMessage(messaging, (payload) => {
       const { title, body } = payload.notification!;
@@ -422,6 +586,9 @@ export default function App() {
                 <UserItem key={u.uid}>
                   <img src={u.avatar} alt={u.username} />
                   <strong>{u.username}</strong>
+                  <Status online={!!u.online}>
+                    {u.online ? "Online" : "Offline"}
+                  </Status>
                 </UserItem>
               ))}
             </UsersList>
