@@ -408,13 +408,18 @@ async function openDB(): Promise<IDBDatabase> {
       const db = (event.target as IDBOpenDBRequest).result;
       db.createObjectStore(STORE_NAME, { keyPath: "uid" });
     };
-    request.onsuccess = (event) => resolve((event.target as IDBOpenDBRequest).result);
-    request.onerror = (event) => reject((event.target as IDBOpenDBRequest).error);
+    request.onsuccess = (event) =>
+      resolve((event.target as IDBOpenDBRequest).result);
+    request.onerror = (event) =>
+      reject((event.target as IDBOpenDBRequest).error);
   });
 }
 
 // Função para salvar privateKey (CryptoKey) no IndexedDB
-async function savePrivateKeyToDB(uid: string, privateKey: CryptoKey): Promise<void> {
+async function savePrivateKeyToDB(
+  uid: string,
+  privateKey: CryptoKey
+): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readwrite");
@@ -486,7 +491,9 @@ const getUserColor = (u: string) => {
 
 export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [decryptedMessages, setDecryptedMessages] = useState<{ [id: string]: string }>({});
+  const [decryptedMessages, setDecryptedMessages] = useState<{
+    [id: string]: string;
+  }>({});
   const [text, setText] = useState("");
   const [usersData, setUsersData] = useState<User[]>([]);
   const [showMenu, setShowMenu] = useState(false);
@@ -549,14 +556,24 @@ export default function App() {
         );
 
         // Exportar public key para compartilhar
-        const exportedPublic = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+        const exportedPublic = await crypto.subtle.exportKey(
+          "jwk",
+          keyPair.publicKey
+        );
         const exportedPublicStr = JSON.stringify(exportedPublic);
 
         // Armazenar publicKey no Firestore
-        await setDoc(doc(db, "users", uid), { publicKey: exportedPublicStr }, { merge: true });
+        await setDoc(
+          doc(db, "users", uid),
+          { publicKey: exportedPublicStr },
+          { merge: true }
+        );
 
         // Exportar private temporariamente como JWK
-        const exportedPrivateJwk = await crypto.subtle.exportKey("jwk", keyPair.privateKey);
+        const exportedPrivateJwk = await crypto.subtle.exportKey(
+          "jwk",
+          keyPair.privateKey
+        );
 
         // Importar private novamente como non-extractable (apenas para decrypt)
         privKey = await crypto.subtle.importKey(
@@ -574,7 +591,9 @@ export default function App() {
       setPrivateKey(privKey);
     };
 
-    loadKeys().catch((err) => toast.error(`Erro ao gerenciar chaves: ${err.message}`));
+    loadKeys().catch((err) =>
+      toast.error(`Erro ao gerenciar chaves: ${err.message}`)
+    );
   }, [entered, uid]);
 
   // --- Carregar mensagens ---
@@ -686,7 +705,9 @@ export default function App() {
       .then((registration) => {
         console.log("Service Worker registered:", registration);
         // Normalizar vapidKey para Base64 padrão
-        const vapidKey = "SUA_VAPID_KEY_DO_FIREBASE".replace(/-/g, '+').replace(/_/g, '/');
+        const vapidKey = "SUA_VAPID_KEY_DO_FIREBASE"
+          .replace(/-/g, "+")
+          .replace(/_/g, "/");
         return getToken(messaging, {
           vapidKey,
           serviceWorkerRegistration: registration,
@@ -830,7 +851,10 @@ export default function App() {
               ) : (
                 <MessageItem
                   key={m.id}
-                  message={{ ...m, text: decryptedMessages[m.id] || "[Decifrando...]"}}
+                  message={{
+                    ...m,
+                    text: decryptedMessages[m.id] || "[Decifrando...]",
+                  }}
                   isSender={m.user === username}
                   color={getUserColor(m.user!)}
                   seen={m.readBy!.length > 1}
