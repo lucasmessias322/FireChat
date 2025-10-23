@@ -1,10 +1,9 @@
 import * as C from "./AppStyle";
 import MessageItem from "./Components/MessageItem";
 import SystemMessage from "./Components/SystemMessage";
-
 import { useState, useEffect, FormEvent, useRef } from "react";
-import { db, timestamp, auth } from "./firebase";
-import FireLogo from "./assets/Firechat.png";
+import { db, timestamp, auth, messaging } from "./firebase";
+
 import {
   collection,
   query,
@@ -13,33 +12,26 @@ import {
   addDoc,
   deleteDoc,
   doc as docRef,
-  writeBatch,
   doc,
-  arrayUnion,
   setDoc,
   Timestamp,
 } from "firebase/firestore";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut as fbSignOut,
-  onAuthStateChanged,
-  User as FirebaseUser,
-} from "firebase/auth";
-import { messaging } from "./firebase"; // exporte getMessaging(app) no seu firebase.ts
 import { getToken, onMessage } from "firebase/messaging";
-
-// React-Toastify
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Header from "./Components/Header";
-import SigningAndLogin from "./Components/SigningAndLogin";
+import AuthForm from "./Components/AuthForm";
+
+import { useAuth } from "./hooks/useAuth";
+import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import { useMarkRead } from "./hooks/useMarkRead";
+import { useTypingStatus } from "./hooks/useTypingStatus";
+
 import styled from "styled-components";
 import SendMessageForm from "./Components/SendMessageForm";
-import { IoIosArrowBack } from "react-icons/io";
+import GroupInfo from "./Components/GroupInfo";
 
+// Tipos
 interface Message {
   id: string;
   text: string;
@@ -48,6 +40,7 @@ interface Message {
   system?: boolean;
   readBy?: string[];
 }
+
 interface User {
   uid: string;
   username: string;
@@ -55,6 +48,7 @@ interface User {
   online?: boolean;
 }
 
+// Paleta de cores para usuários
 const colorPalette = [
   "#e57373",
   "#ba68c8",
@@ -80,189 +74,37 @@ const getUserColor = (u: string) => {
 };
 
 export default function App() {
-  const [entered, setEntered] = useState(false);
-  const [loginMode, setLoginMode] = useState<"login" | "signup">("login");
-  const [inputName, setInputName] = useState("");
-  const [inputPass, setInputPass] = useState("");
-  const [username, setUsername] = useState("");
-  const [avatar, setAvatar] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
   const [usersData, setUsersData] = useState<User[]>([]);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  //const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [showMenu, setShowMenu] = useState(false);
-
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const typingTimeout = useRef<NodeJS.Timeout>();
+  const typingUsers = useTypingStatus(usersData);
+  // Auth Hook
+  const {
+    user,
+    entered,
+    loginMode,
+    inputName,
+    inputPass,
+    setLoginMode,
+    setInputName,
+    setInputPass,
+    handleAuth,
+    handleGoogleLogin,
+    handleLogout,
+  } = useAuth();
 
-  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  const username = user?.username || "";
+  const avatar = user?.avatar || "";
+  // --- Hook de presença online ---
+  useOnlineStatus(entered); // ✅ Substitui o useEffect antigo
+  useMarkRead(messages, username);
 
-  Notification.requestPermission().then((permission) => {
-    if (permission === "granted") {
-      //console.log("Permissão concedida para notificações.");
-    }
-  });
-
-  // controla o status online com base em foco e visibilidade
-  // useEffect(() => {
-  //   if (!auth.currentUser) return;
-
-  //   const uid = auth.currentUser.uid;
-
-  //   let windowFocused = document.hasFocus();
-
-  //   const setOnlineStatus = async (status: boolean) => {
-  //     await setDoc(
-  //       docRef(db, "users", uid),
-  //       { online: status },
-  //       { merge: true }
-  //     );
-  //   };
-
-  //   const updateOnlineState = () => {
-  //     const isVisible = !document.hidden;
-  //     const isFocused = windowFocused;
-  //     setOnlineStatus(isVisible && isFocused);
-  //   };
-
-  //   const handleFocus = () => {
-  //     windowFocused = true;
-  //     updateOnlineState();
-  //   };
-
-  //   const handleBlur = () => {
-  //     windowFocused = false;
-  //     updateOnlineState();
-  //   };
-
-  //   const handleVisibility = () => {
-  //     updateOnlineState();
-  //   };
-
-  //   // Eventos de foco e visibilidade
-  //   window.addEventListener("focus", handleFocus);
-  //   window.addEventListener("blur", handleBlur);
-  //   document.addEventListener("visibilitychange", handleVisibility);
-
-  //   // Define como online ao entrar
-  //   updateOnlineState();
-
-  //   // Ao sair ou fechar aba
-  //   const handleUnload = async () => {
-  //     await setOnlineStatus(false);
-  //   };
-  //   window.addEventListener("beforeunload", handleUnload);
-
-  //   return () => {
-  //     window.removeEventListener("focus", handleFocus);
-  //     window.removeEventListener("blur", handleBlur);
-  //     document.removeEventListener("visibilitychange", handleVisibility);
-  //     window.removeEventListener("beforeunload", handleUnload);
-  //   };
-  // }, [auth.currentUser]);
-  // controla o status online com base em foco e visibilidade — versão confiável
-useEffect(() => {
-  if (!auth.currentUser) return;
-
-  const uid = auth.currentUser.uid;
-  let windowFocused = document.hasFocus();
-  let isVisible = !document.hidden;
-  let lastStatus = false; // evita updates repetidos
-
-  const setOnlineStatus = async (status: boolean) => {
-    if (status === lastStatus) return; // evita writes redundantes
-    lastStatus = status;
-    await setDoc(
-      docRef(db, "users", uid),
-      { online: status },
-      { merge: true }
-    );
-  };
-
-  const updateOnlineState = () => {
-    const onlineNow = windowFocused && isVisible;
-    setOnlineStatus(onlineNow);
-  };
-
-  const handleFocus = () => {
-    windowFocused = true;
-    updateOnlineState();
-  };
-
-  const handleBlur = () => {
-    windowFocused = false;
-    updateOnlineState();
-  };
-
-  const handleVisibility = () => {
-    isVisible = !document.hidden;
-    updateOnlineState();
-  };
-
-  // Eventos
-  window.addEventListener("focus", handleFocus);
-  window.addEventListener("blur", handleBlur);
-  document.addEventListener("visibilitychange", handleVisibility);
-
-  // Marca como online apenas se realmente estiver visível e focado
-  updateOnlineState();
-
-  // Ao sair, fecha aba ou perder conexão
-  const handleUnload = () => {
-    navigator.sendBeacon(
-      `${window.location.origin}/offline`, // endpoint fictício (não é usado)
-      JSON.stringify({ uid })
-    );
-    setDoc(docRef(db, "users", uid), { online: false }, { merge: true });
-  };
-  window.addEventListener("beforeunload", handleUnload);
-  window.addEventListener("pagehide", handleUnload);
-
-  return () => {
-    window.removeEventListener("focus", handleFocus);
-    window.removeEventListener("blur", handleBlur);
-    document.removeEventListener("visibilitychange", handleVisibility);
-    window.removeEventListener("beforeunload", handleUnload);
-    window.removeEventListener("pagehide", handleUnload);
-    setOnlineStatus(false);
-  };
-}, [entered]); // importante: só roda depois que o usuário entrou
-
-
-  // Auth listener: update online status
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      if (u) {
-        setEntered(true);
-        const name = u.email!.split("@")[0];
-        setUsername(name);
-        const avatarUrl =
-          u.photoURL && u.photoURL !== ""
-            ? u.photoURL
-            : `https://api.dicebear.com/6.x/pixel-art/svg?seed=${u.uid}`;
-        setAvatar(avatarUrl);
-        // update user doc
-        await setDoc(
-          docRef(db, "users", u.uid),
-          { username: name, avatar: avatarUrl, online: true },
-          { merge: true }
-        );
-        await addDoc(collection(db, "messages"), {
-          text: `${name} entrou no chat`,
-          timestamp: timestamp(),
-          system: true,
-          readBy: [name],
-        });
-      } else {
-        setEntered(false);
-        setUsername("");
-        setAvatar("");
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // load messages
+  // --- Carregar mensagens ---
   useEffect(() => {
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
     return onSnapshot(q, (snap) =>
@@ -272,7 +114,7 @@ useEffect(() => {
     );
   }, []);
 
-  // load users with status
+  // --- Carregar usuários ---
   useEffect(() => {
     const q = collection(db, "users");
     return onSnapshot(q, (snap) =>
@@ -287,87 +129,23 @@ useEffect(() => {
     );
   }, []);
 
-  // load typing
-  useEffect(() => {
-    const q = collection(db, "typing");
-    return onSnapshot(q, (snap) => {
-      const users = snap.docs
-        .map((d) => ({ uid: d.id, typing: (d.data() as any).typing }))
-        .filter((x) => x.typing && x.uid !== auth.currentUser?.uid)
-        .map((x) => usersData.find((u) => u.uid === x.uid)?.username)
-        .filter((n): n is string => !!n);
-      setTypingUsers(users);
-    });
-  }, [usersData]);
-
-  // mark read
-
-  useEffect(() => {
-    if (!username) return;
-
-    let windowFocused = document.hasFocus(); // estado inicial
-
-    const markAsRead = () => {
-      if (document.hidden || !windowFocused) return; // só marca se visível e focado
-      const batch = writeBatch(db);
-      messages.forEach((m) => {
-        if (!m.system && !m.readBy?.includes(username)) {
-          batch.update(doc(db, "messages", m.id), {
-            readBy: arrayUnion(username),
-          });
-        }
-      });
-      batch.commit();
-    };
-
-    const handleVisibility = () => {
-      if (!document.hidden && windowFocused) {
-        markAsRead();
-      }
-    };
-
-    const handleFocus = () => {
-      windowFocused = true;
-      markAsRead();
-    };
-
-    const handleBlur = () => {
-      windowFocused = false;
-    };
-
-    // Executa quando a aba muda de visibilidade
-    document.addEventListener("visibilitychange", handleVisibility);
-    // Executa quando a janela ganha ou perde foco
-    window.addEventListener("focus", handleFocus);
-    window.addEventListener("blur", handleBlur);
-
-    // Executa uma vez ao carregar (se o usuário já estiver com a aba ativa)
-    markAsRead();
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("blur", handleBlur);
-    };
-  }, [messages, username]);
-
-  // autoscroll
+  // --- Scroll automático ---
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // dentro do seu App()...
+  // --- Notificações ---
+  useEffect(() => {
+    Notification.requestPermission();
+  }, []);
 
   useEffect(() => {
-    if (!("Notification" in window) || Notification.permission !== "granted") {
-      // se não há suporte ou permissão, não faz nada
-      return;
-    }
+    if (Notification.permission !== "granted") return;
 
     let isFirstLoad = true;
     let previousIds: string[] = [];
-
     const q = query(collection(db, "messages"), orderBy("timestamp", "asc"));
+
     const unsubscribe = onSnapshot(q, (snap) => {
       const docs = snap.docs.map((d) => ({
         id: d.id,
@@ -376,23 +154,17 @@ useEffect(() => {
       const currentIds = docs.map((m) => m.id);
 
       if (!isFirstLoad) {
-        // encontrar mensagens que estão em currentIds mas não em previousIds
         const newMsgEntries = docs.filter(
-          (m) =>
-            !previousIds.includes(m.id) &&
-            !m.system && // só mensagens de usuários
-            m.user !== username // só quando vier de OUTRO usuário
+          (m) => !previousIds.includes(m.id) && !m.system && m.user !== username
         );
-
         newMsgEntries.forEach((m) => {
           new Notification(`Nova mensagem de ${m.user}`, {
             body: m.text,
-            icon: "/icon.png", // ou avatar do usuário: usersData.find(u=>u.uid===m.user)?.avatar
+            icon: "/icon.png",
           });
         });
       }
 
-      // atualiza state e flags
       setMessages(docs);
       previousIds = currentIds;
       isFirstLoad = false;
@@ -401,24 +173,19 @@ useEffect(() => {
     return () => unsubscribe();
   }, [username]);
 
+  // --- Firebase Cloud Messaging ---
   useEffect(() => {
     if (Notification.permission !== "granted") return;
 
-    // registra o SW do Firebase (em public/firebase-messaging-sw.js)
     navigator.serviceWorker
       .register("/firebase-messaging-sw.js")
-      .then((registration) => {
-        // pede o token
-        return getToken(messaging, {
+      .then((registration) =>
+        getToken(messaging, {
           vapidKey: "SUA_VAPID_KEY_DO_FIREBASE",
           serviceWorkerRegistration: registration,
-        });
-      })
-      .then((token) => {
-        console.log("FCM token:", token);
-        // envie esse token para o seu backend ou salve no Firestore:
-        // fetch('/api/save-fcm-token', { method:'POST', body:JSON.stringify({ uid: auth.currentUser?.uid, token }) })
-      })
+        })
+      )
+      .then((token) => console.log("FCM token:", token))
       .catch(console.error);
   }, []);
 
@@ -432,55 +199,12 @@ useEffect(() => {
     });
   }, []);
 
-  const fakeEmail = (name: string) => `${name}@chat.app`;
-
-  // auth handlers
-  const handleAuth = async () => {
-    const name = inputName.trim().toLowerCase();
-    if (!name || !inputPass) {
-      toast.error("Preencha todos os campos");
-      return;
-    }
-    const email = fakeEmail(name);
-    try {
-      if (loginMode === "login")
-        await signInWithEmailAndPassword(auth, email, inputPass);
-      else await createUserWithEmailAndPassword(auth, email, inputPass);
-      setInputPass("");
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-  const handleGoogleLogin = async () => {
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-    } catch (err: any) {
-      toast.error(err.message);
-    }
-  };
-  const handleLogout = async () => {
-    // set offline
-    const uid = auth.currentUser!.uid;
-    await setDoc(docRef(db, "users", uid), { online: false }, { merge: true });
-    await addDoc(collection(db, "messages"), {
-      text: `${username} saiu do chat`,
-      timestamp: timestamp(),
-      system: true,
-      readBy: [username],
-    });
-    await fbSignOut(auth);
-    setShowMenu(false);
-    toast.info("Você saiu do chat");
-  };
-
-  // send
+  // --- Enviar mensagem ---
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault();
     const t = text.trim();
-    if (!t) {
-      toast.error("Mensagem vazia não pode ser enviada");
-      return;
-    }
+    if (!t) return toast.error("Mensagem vazia não pode ser enviada");
+
     try {
       const now = Timestamp.now();
       const expiresAt = Timestamp.fromMillis(
@@ -500,26 +224,22 @@ useEffect(() => {
         typing: false,
         lastUpdated: timestamp(),
       });
-      //toast.success("Mensagem enviada");
     } catch (err: any) {
       toast.error(`Erro ao enviar mensagem: ${err.message}`);
     }
   };
 
-  // Delete message
-  // Delete message
+  // --- Deletar mensagem ---
   const handleDelete = async (id: string, owner?: string) => {
-    // só o dono da mensagem ou o usuário "lucas" podem deletar
     if (
       owner !== username &&
-      username.toLowerCase() !== "lucas" &&
-      username.toLowerCase() !== "lucasmessiaspereira322" &&
-      username.toLowerCase() !== "admin"
+      !["lucas", "lucasmessiaspereira322", "admin"].includes(
+        username.toLowerCase()
+      )
     ) {
       toast.error("Você não tem permissão para deletar esta mensagem");
       return;
     }
-
     if (window.confirm("Confirma exclusão?")) {
       try {
         await deleteDoc(docRef(db, "messages", id));
@@ -530,11 +250,12 @@ useEffect(() => {
     }
   };
 
+  // --- Tela de login ---
   if (!entered)
     return (
       <>
         <ToastContainer position="top-right" />
-        <SigningAndLogin
+        <AuthForm
           loginMode={loginMode}
           setLoginMode={setLoginMode}
           handleGoogleLogin={handleGoogleLogin}
@@ -547,53 +268,21 @@ useEffect(() => {
       </>
     );
 
+  // --- Interface principal ---
   return (
     <C.Container>
       <ToastContainer position="top-right" />
-
       <Header
         setShowMenu={setShowMenu}
         showMenu={showMenu}
         username={username}
         avatar={avatar}
         handleLogout={handleLogout}
-        onOpenGroupInfo={() => setShowGroupInfo(true)} // 👈 novo
+        onOpenGroupInfo={() => setShowGroupInfo(true)}
       />
 
       {showGroupInfo && (
-        <GroupInfoOverlay>
-          <GroupInfoContent>
-            <GroupHeader>
-              <IoIosArrowBack
-                size={30}
-                onClick={() => setShowGroupInfo(false)}
-              />
-              <h1>
-                <b>Fire</b>Chat
-              </h1>
-            </GroupHeader>
-
-            <GroupInfoBox>
-              <img src={FireLogo} alt="Firechat Logo" />
-              <p>
-                Grupo oficial do chat. Aqui todos podem conversar livremente!
-              </p>
-            </GroupInfoBox>
-
-            <h4>Participantes ({usersData.length})</h4>
-            <UsersList>
-              {usersData.map((u) => (
-                <UserItem key={u.uid}>
-                  <img src={u.avatar} alt={u.username} />
-                  <strong>{u.username}</strong>
-                  <Status online={!!u.online}>
-                    {u.online ? "Online" : "Offline"}
-                  </Status>
-                </UserItem>
-              ))}
-            </UsersList>
-          </GroupInfoContent>
-        </GroupInfoOverlay>
+        <GroupInfo users={usersData} handleLogout={handleLogout} onClose={() => setShowGroupInfo(false)} />
       )}
 
       <C.ChatContainer>
@@ -603,7 +292,7 @@ useEffect(() => {
             .reverse()
             .map((m) =>
               m.system ? (
-                username == "lucas" && <SystemMessage key={m.id} message={m} />
+                username === "lucas" && <SystemMessage key={m.id} message={m} />
               ) : (
                 <MessageItem
                   key={m.id}
@@ -628,6 +317,7 @@ useEffect(() => {
         )}
         <div ref={messagesEndRef} />
       </C.ChatContainer>
+
       <SendMessageForm
         text={text}
         handleTextChange={(e: any) => {
@@ -652,95 +342,3 @@ useEffect(() => {
     </C.Container>
   );
 }
-
-const UsersList = styled.div`
-  //background: #1e2131;
-
-  padding: 10px;
-  height: 100%;
-  width: 100%;
-  overflow: auto;
-`;
-
-const UserItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-
-  padding: 10px;
-
-  img {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    object-fit: cover;
-    background: #1e2131;
-    padding: 5px;
-  }
-`;
-const Status = styled.span<{ online: boolean }>`
-  font-size: 12px;
-  color: ${(p) => (p.online ? "#4caf50" : "#f44336")};
-`;
-
-const GroupInfoOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #181a25;
-  color: #fff;
-  z-index: 100;
-  overflow-y: auto;
-  animation: fadeIn 0.3s ease-in-out;
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-`;
-
-const GroupInfoContent = styled.div`
-  max-width: 600px;
-  margin: 0px auto;
-  padding: 10px 5px;
-`;
-
-const GroupHeader = styled.div`
-  display: flex;
-  width: 100%;
-  align-items: center;
-  background-color: #181a25;
-  gap: 5px;
-
-  margin-bottom: 40px;
-  padding: 20px 0px;
-  h1 {
-    font-size: 22px;
-    font-weight: bold;
-    cursor: pointer;
-
-    b {
-      color: #ff5100;
-    }
-  }
-`;
-
-const GroupInfoBox = styled.div`
-  text-align: center;
-  margin-bottom: 40px;
-
-  img {
-    width: 100px;
-    border-radius: 16px;
-    margin-bottom: 10px;
-  }
-`;

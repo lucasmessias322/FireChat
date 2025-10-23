@@ -1,5 +1,6 @@
 import styled from "styled-components";
 import FireLogo from "../../assets/Firechat.png";
+import { BsThreeDotsVertical } from "react-icons/bs";
 
 function Header({
   onOpenGroupInfo, // 👈 novo
@@ -12,6 +13,8 @@ function Header({
           <b>Fire</b>Chat
         </h1>
       </Logo>
+
+      {/* <BsThreeDotsVertical size={20} /> */}
     </HeaderWrapper>
   );
 }
