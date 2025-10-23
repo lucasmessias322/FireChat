@@ -1,7 +1,7 @@
 import * as C from "./AppStyle";
 import MessageItem from "./Components/MessageItem";
 import SystemMessage from "./Components/SystemMessage";
-import { IoExitOutline, IoSend } from "react-icons/io5";
+
 import { useState, useEffect, FormEvent, useRef } from "react";
 import { db, timestamp, auth } from "./firebase";
 import FireLogo from "./assets/Firechat.png";
@@ -91,7 +91,7 @@ export default function App() {
   const [usersData, setUsersData] = useState<User[]>([]);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [showMenu, setShowMenu] = useState(false);
-  const [showUsersList, setShowUsersList] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const typingTimeout = useRef<NodeJS.Timeout>();
 
@@ -393,7 +393,6 @@ export default function App() {
         username={username}
         avatar={avatar}
         handleLogout={handleLogout}
-        onClickUsers={() => setShowUsersList((v) => !v)}
         onOpenGroupInfo={() => setShowGroupInfo(true)} // 👈 novo
       />
 
@@ -423,9 +422,6 @@ export default function App() {
                 <UserItem key={u.uid}>
                   <img src={u.avatar} alt={u.username} />
                   <strong>{u.username}</strong>
-                  <Status online={!!u.online}>
-                    {u.online ? "Online" : "Offline"}
-                  </Status>
                 </UserItem>
               ))}
             </UsersList>
@@ -486,43 +482,10 @@ export default function App() {
         }}
         sendMessage={sendMessage}
       />
-      {/* {showUsersList && (
-        <UsersOverlay>
-          <UsersList>
-            {usersData.map((u) => (
-              <UserItem key={u.uid}>
-                <img src={u.avatar} alt={u.username} />
-                <strong>{u.username}</strong>
-                <Status online={!!u.online}>
-                  {u.online ? "Online" : "Offline"}
-                </Status>
-              </UserItem>
-            ))}
-          </UsersList>
-          <CloseButton onClick={() => setShowUsersList(false)}>
-            Fechar
-          </CloseButton>
-        </UsersOverlay>
-      )} */}
     </C.Container>
   );
 }
 
-// Styled overlay components
-const UsersOverlay = styled.div`
-  position: fixed;
-  top: 70px;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #181a25;
-  // background: rgba(0, 0, 0, 0.8);
-  // display: flex;
-  // flex-direction: column;
-  //align-items: center;
-  //justify-content: center;
-  z-index: 10;
-`;
 const UsersList = styled.div`
   //background: #1e2131;
 
