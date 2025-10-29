@@ -25,7 +25,7 @@ export function useAuth() {
   const [loginMode, setLoginMode] = useState<"login" | "signup">("login");
   const [inputName, setInputName] = useState("");
   const [inputPass, setInputPass] = useState("");
-
+  const [avatarStyle, setAvatarStyle] = useState("fun-emoji");
   const fakeEmail = (name: string) => `${name}@chat.app`;
 
   // --- LOGIN / SIGNUP ---
@@ -72,46 +72,57 @@ export function useAuth() {
     toast.info("Você saiu do chat");
   };
 
+
   // --- MONITORA O ESTADO DE LOGIN ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u: FirebaseUser | null) => {
-      if (u) {
-        setEntered(true);
-        const name = u.email!.split("@")[0];
-        const avatarUrl =
-          u.photoURL && u.photoURL !== ""
-            ? u.photoURL
-            : `https://api.dicebear.com/6.x/pixel-art/svg?seed=${u.uid}`;
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (u: FirebaseUser | null) => {
+        if (u) {
+          setEntered(true);
+          const name = u.email!.split("@")[0];
 
-        const newUser: AuthUser = {
-          uid: u.uid,
-          username: name,
-          avatar: avatarUrl,
-          online: true,
-        };
+          // 🔹 Usa o estilo salvo no Firestore ou o padrão
+          const style = avatarStyle || "fun-emoji";
+          const avatarUrl = `https://api.dicebear.com/9.x/${style}/svg?seed=${encodeURIComponent(
+            u.uid
+          )}`;
 
-        setUser(newUser);
+          const newUser: AuthUser = {
+            uid: u.uid,
+            username: name,
+            avatar: avatarUrl,
+            online: true,
+          };
 
-        await setDoc(
-          doc(db, "users", u.uid),
-          { username: name, avatar: avatarUrl, online: true },
-          { merge: true }
-        );
+          setUser(newUser);
 
-        await addDoc(collection(db, "messages"), {
-          text: `${name} entrou no chat`,
-          timestamp: timestamp(),
-          system: true,
-          readBy: [name],
-        });
-      } else {
-        setEntered(false);
-        setUser(null);
+          await setDoc(
+            doc(db, "users", u.uid),
+            {
+              username: name,
+              avatar: avatarUrl,
+              avatarStyle: style,
+              online: true,
+            },
+            { merge: true }
+          );
+
+          await addDoc(collection(db, "messages"), {
+            text: `${name} entrou no chat`,
+            timestamp: timestamp(),
+            system: true,
+            readBy: [name],
+          });
+        } else {
+          setEntered(false);
+          setUser(null);
+        }
       }
-    });
+    );
 
     return () => unsubscribe();
-  }, []);
+  }, [avatarStyle]);
 
   return {
     user,
@@ -125,5 +136,7 @@ export function useAuth() {
     handleAuth,
     handleGoogleLogin,
     handleLogout,
+    avatarStyle,
+    setAvatarStyle, // 👈 adicionado
   };
 }

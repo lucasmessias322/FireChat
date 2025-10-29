@@ -57,8 +57,7 @@ export default function MessageItem({
   // Verifica se a mensagem não foi descriptografada
   const isEncrypted =
     message.text === "[Decifrando...]" ||
-    message.text === "[Erro ao decifrar mensagem]";
-
+    message.text === "[Erro ao decifrar mensagem]" 
   // Extrai timestamp
   let date: Date;
   if (message.timestamp instanceof Timestamp) {
